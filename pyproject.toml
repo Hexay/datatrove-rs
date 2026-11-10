@@ -19,3 +19,7 @@ test = ["pytest", "pyarrow", "spacy>=3.8,<3.9", "xxhash<4", "tokenizers"]
 manifest-path = "crates/datatrove-py/Cargo.toml"
 python-source = "python"
 module-name = "datatrove_rs._core"
+# The release profile keeps debug info for perf; shipped wheels don't need it (16 MB -> a few MB).
+strip = true
+# Startup hook for zero-code adoption (DATATROVE_RS=1); must land at the wheel root, next to the package.
+include = [{ path = "python/datatrove_rs.pth", format = "wheel" }]

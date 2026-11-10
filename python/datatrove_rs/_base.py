@@ -1,22 +1,31 @@
+import importlib.util
 import unicodedata
 import warnings
-from functools import lru_cache
+from functools import lru_cache, partial
 
-from datatrove.utils.word_tokenizers import SpaCyTokenizer, load_word_tokenizer
+from datatrove.utils.word_tokenizers import SpaCyTokenizer, WordTokenizer, load_tokenizer_assignments
 
 from datatrove_rs import _core
 
 _NOT_APPLICABLE = False
 
 
+@lru_cache(maxsize=1)
+def spacy_installed() -> bool:
+    return importlib.util.find_spec("spacy") is not None
+
+
 @lru_cache(maxsize=None)
 def uses_spacy_english(language) -> bool:
-    """True when datatrove would tokenize `language` with plain `spacy.blank("en")`, the only tokenizer ported."""
-    try:
-        tok = load_word_tokenizer(language)
-    except ValueError:
-        return False
-    return type(tok) is SpaCyTokenizer and tok.language == "en" and tok.config is None
+    """True when datatrove would tokenize `language` with plain `spacy.blank("en")`, the only tokenizer ported.
+
+    Decided from datatrove's factory table without instantiating the tokenizer, which would require spaCy to be
+    installed even though the Rust path never uses it.
+    """
+    if isinstance(language, WordTokenizer):
+        return type(language) is SpaCyTokenizer and language.language == "en" and language.config is None
+    factory = load_tokenizer_assignments().get(language)
+    return isinstance(factory, partial) and factory.args == ("SpaCyTokenizer", "en") and not factory.keywords
 
 
 def check_unicode_tables():
@@ -51,9 +60,10 @@ class RustBacked:
 
         spaCy 3.8 raises inside `memory_zone` on a token "IS_ALPHA" once any earlier call in the process has seen
         one, and datatrove then retokenizes with "IS_ALPHA" deleted. That depends on the shared spaCy vocab's
-        history, so such docs run through datatrove itself to keep that state and the output exact.
+        history, so such docs run through datatrove itself to keep that state and the output exact. Without spaCy
+        installed there is no such state to match (datatrove itself could not run), so Rust handles them too.
         """
-        return None if "IS_ALPHA" in text else self.rust()
+        return None if "IS_ALPHA" in text and spacy_installed() else self.rust()
 
     def __getstate__(self):
         state = self.__dict__.copy()

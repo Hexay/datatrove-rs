@@ -4,30 +4,40 @@ Drop-in Rust implementations of [datatrove](https://github.com/huggingface/datat
 MinHash stage 1, for English. The outputs match datatrove's exactly: the same keep/drop decisions, drop reasons,
 rewritten `doc.text`, stats and signature files.
 
-| datatrove step | datatrove_rs replacement |
+| datatrove step | Rust-backed replacement |
 |---|---|
-| `filters.GopherRepetitionFilter` | `datatrove_rs.GopherRepetitionFilter` |
-| `filters.GopherQualityFilter` | `datatrove_rs.GopherQualityFilter` |
-| `filters.C4QualityFilter` | `datatrove_rs.C4QualityFilter` |
-| `filters.FineWebQualityFilter` | `datatrove_rs.FineWebQualityFilter` |
-| `dedup.MinhashDedupSignature` | `datatrove_rs.MinhashDedupSignature` |
+| `pipeline.filters.GopherRepetitionFilter` | `datatrove_rs.GopherRepetitionFilter` |
+| `pipeline.filters.GopherQualityFilter` | `datatrove_rs.GopherQualityFilter` |
+| `pipeline.filters.C4QualityFilter` | `datatrove_rs.C4QualityFilter` |
+| `pipeline.filters.FineWebQualityFilter` | `datatrove_rs.FineWebQualityFilter` |
+| `pipeline.dedup.MinhashDedupSignature` | `datatrove_rs.MinhashDedupSignature` |
 
 Each class subclasses the datatrove step and takes the same arguments. `filter()` (MinHash: `get_shingles` /
 `get_signature`) is replaced. The filters also override `run()` with an inlined copy of `BaseFilter.run()` whose stat
 bookkeeping is cheaper but bit-for-bit identical (see `python/datatrove_rs/_run.py`); a subclass that overrides
 `filter`, `filter_batch`, `stat_update`, `update_doc_stats` or `track_time` gets datatrove's `run()` instead.
 
-## Usage
+## Adopting
+
+`pip install datatrove-rs`, then pick one; every other datatrove step keeps running datatrove's own code.
+
+1. **No code changes.** Set `DATATROVE_RS=1` (an installed `.pth` hook calls `patch()` at interpreter startup, so
+   executor worker processes get it too), or run the unmodified script with `python -m datatrove_rs pipeline.py`.
+2. **One line.** `import datatrove_rs; datatrove_rs.patch()` before building the pipeline. datatrove's own import
+   paths (`datatrove.pipeline.filters.GopherQualityFilter`, ...) then hand out the Rust classes; `unpatch()` undoes it.
+3. **Explicit imports, no patching.** `datatrove_rs.<path>` mirrors every `datatrove.<path>` module with the Rust
+   classes swapped in, so replacing `datatrove.` with `datatrove_rs.` in the imports is enough:
 
 ```python
-from datatrove_rs import (C4QualityFilter, FineWebQualityFilter, GopherQualityFilter,
-                          GopherRepetitionFilter, MinhashDedupSignature)
+from datatrove_rs.pipeline.filters import GopherQualityFilter, URLFilter  # Rust, datatrove's own
+from datatrove_rs.pipeline.readers import WarcReader                       # datatrove's own
 ```
 
-Swap the imports in an existing pipeline; nothing else changes.
+The Rust classes keep `__module__ = "datatrove_rs.*"`, so pickled pipelines (Slurm, local multiprocessing) load them
+on workers whether or not the worker patched. Unsupported languages fall back per step, as described below.
 
-Requires datatrove `>=0.10.1,<0.11` and Python 3.10+ (one abi3 wheel). spaCy is still needed for the fallback paths
-listed below.
+Requires datatrove `>=0.10.1,<0.11` and Python 3.10+ (one abi3 wheel). English needs no spaCy install; spaCy is
+only used for the non-English fallback and, when installed, to reproduce the `IS_ALPHA` quirk below.
 
 ## Speed
 
@@ -82,7 +92,8 @@ Every check compares against datatrove running unmodified in the same environmen
   `eng` and every language code datatrove maps to it. Other languages run datatrove's Python code unchanged.
 - **The `IS_ALPHA` token.** Inside `memory_zone`, spaCy 3.8 raises an error on the token `IS_ALPHA` once the same
   process has seen that token before, and datatrove then retokenizes the text without it. The result depends on
-  process history, so any doc containing `IS_ALPHA` runs through datatrove itself.
+  process history, so when spaCy is installed any doc containing `IS_ALPHA` runs through datatrove itself.
+  Without spaCy, datatrove could not run at all and Rust handles these docs as spaCy would on first sight.
 - **Reproduced quirks.**
   - `Counter.most_common` tie-breaking;
   - the `"".join` n-gram keys in `find_all_duplicate`;

@@ -1,9 +1,12 @@
-"""Drop-in Rust implementations of datatrove's English Gopher, C4, FineWeb filters and MinHash stage 1."""
+"""Drop-in Rust implementations of datatrove steps; see README "Adopting" for the three ways to switch."""
 
+from datatrove_rs import _mirror
 from datatrove_rs._base import check_unicode_tables
+from datatrove_rs._patching import is_patched, patch, unpatch
 from datatrove_rs.filters import C4QualityFilter, FineWebQualityFilter, GopherQualityFilter, GopherRepetitionFilter
 
 check_unicode_tables()
+_mirror.install()
 
 __all__ = [
     "C4QualityFilter",
@@ -11,6 +14,9 @@ __all__ = [
     "GopherQualityFilter",
     "GopherRepetitionFilter",
     "MinhashDedupSignature",
+    "is_patched",
+    "patch",
+    "unpatch",
 ]
 
 

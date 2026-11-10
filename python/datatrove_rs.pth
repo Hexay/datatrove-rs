@@ -1,0 +1,1 @@
+import os; os.environ.get("DATATROVE_RS", "0") not in ("", "0") and __import__("datatrove_rs._autopatch")

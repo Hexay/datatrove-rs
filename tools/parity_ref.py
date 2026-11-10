@@ -30,10 +30,19 @@ def filter_outcome(step, text):
     return (r if isinstance(r, tuple) else (bool(r), None)), (None if doc.text == text else digest(doc.text))
 
 
+def make_step(cls, kwargs, **extra):
+    """`cls(**kwargs, **extra)`; `batch_size` is set as an attribute since datatrove's filters don't take it."""
+    kwargs = dict(kwargs)
+    batch_size = kwargs.pop("batch_size", 1)
+    step = cls(**kwargs, **extra)
+    step.batch_size = batch_size
+    return step
+
+
 def _filter_chunk(args):
     cls, kwargs, texts = args
     settle_is_alpha_state()
-    step = cls(**kwargs)
+    step = make_step(cls, kwargs)
     return [filter_outcome(step, t) for t in texts]
 
 
@@ -58,18 +67,47 @@ def _map_chunks(fn, cls, arg, texts, workers):
         return [r for part in pool.map(fn, chunks) for r in part]
 
 
+_METRIC_FIELDS = ("total", "n", "mean", "min", "max", "_running_variance", "unit")
+
+
 def stats_of(step):
-    return [(k, {f: getattr(v, f) for f in ("total", "n", "mean", "min", "max")}) for k, v in step.stats.stats.items()]
+    """Every stat field, repr'd so int vs float and -0.0 count; time stats only by count and unit (timings vary)."""
+    metrics = [(k, repr([getattr(v, f) for f in _METRIC_FIELDS])) for k, v in step.stats.stats.items()]
+    t = step.stats.time_stats
+    return metrics + [("time_stats", t.n, t.unit)]
+
+
+class RecordingWriter:
+    """Stands in for an exclusion `DiskWriter`: records context entries/exits and every written doc."""
+
+    def __init__(self):
+        self.log = []
+
+    def __enter__(self):
+        self.log.append("enter")
+        return self
+
+    def __exit__(self, *exc):
+        self.log.append("exit")
+
+    def write(self, doc, rank):
+        self.log.append((doc.id, digest(doc.text), rank, sorted(doc.metadata.items())))
+
+
+def run_results(step, texts, rank=0):
+    """`run()` output (ids, text digests), every stat and, if `step.exclusion_writer` records, what it wrote."""
+    docs = (Document(text=t, id=str(i)) for i, t in enumerate(texts))
+    ran = [(d.id, digest(d.text)) for d in step.run(docs, rank=rank)]
+    return ran, stats_of(step), getattr(step.exclusion_writer, "log", None)
 
 
 def filter_results(cls, kwargs, texts, workers=1, run_limit=None):
-    """Per-doc (result, text digest if changed); then `run()` output digests and stats over the first `run_limit`
-    docs that don't raise (`run()` accumulates stats in order, so it can't be split across workers)."""
+    """Per-doc (result, text digest if changed); then `run()` output, stats and excluded docs over the first
+    `run_limit` docs that don't raise (`run()` accumulates stats in order, so it can't be split across workers)."""
     outcomes = _map_chunks(_filter_chunk, cls, kwargs, texts, workers)
     clean = [t for t, (r, _) in zip(texts, outcomes) if r[0] != "raise"][:run_limit]
-    step = cls(**kwargs)
-    ran = [digest(d.text) for d in step.run((Document(text=t, id=str(i)) for i, t in enumerate(clean)), rank=0)]
-    return {"outcomes": outcomes, "run": ran, "stats": stats_of(step)}
+    ran, stats, excluded = run_results(make_step(cls, kwargs, exclusion_writer=RecordingWriter()), clean, rank=3)
+    return {"outcomes": outcomes, "run": ran, "stats": stats, "excluded": excluded}
 
 
 def minhash_results(cls, config, texts, workers=1):

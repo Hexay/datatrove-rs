@@ -3,7 +3,8 @@
 Usage: parity.py <fineweb.parquet> [--real N] [--fuzz N] [--random-configs K] [--workers W] [--cache DIR] [--out FILE]
 
 Per doc it compares the filter result (or raised exception type) and the resulting doc.text; then both steps'
-`run()` over the docs neither raises on, comparing output texts and every stat. MinHash compares shingles and
+`run()` over the docs neither raises on, comparing output ids and texts, every stat field and what the exclusion writer
+receives. MinHash compares shingles and
 signatures per doc and the signature files `run()` writes. The datatrove side runs on W processes and is cached.
 """
 
@@ -25,6 +26,7 @@ from parity_ref import (  # noqa: E402
     digest,
     filter_outcome,
     filter_results,
+    make_step,
     minhash_results,
     settle_is_alpha_state,
 )
@@ -37,19 +39,19 @@ def _corpus_key(texts):
 
 
 def _report_filter(name, py_cls, rs_cls, kwargs, texts, idxs, report):
-    py_step, rs_step = py_cls(**kwargs), rs_cls(**kwargs)
+    py_step, rs_step = make_step(py_cls, kwargs), make_step(rs_cls, kwargs)
     for i in idxs[:20]:
         report.write(f"## {name} doc {i}\nkwargs={kwargs}\npy={filter_outcome(py_step, texts[i])[0]!r}\n")
         report.write(f"rs={filter_outcome(rs_step, texts[i])[0]!r}\ntext={texts[i][:300]!r}\n")
 
 
 def check_filter(name, py_cls, rs_cls, kwargs, texts, report, workers=1, cache_dir=None, run_limit=None):
-    ref = cached(cache_dir, ("filter", name, repr(kwargs), _corpus_key(texts), run_limit),
+    ref = cached(cache_dir, ("filter-v2", name, repr(kwargs), _corpus_key(texts), run_limit),
                  lambda: filter_results(py_cls, kwargs, texts, workers, run_limit))
     got = filter_results(rs_cls, kwargs, texts, run_limit=run_limit)
     bad = [i for i, (a, b) in enumerate(zip(ref["outcomes"], got["outcomes"])) if a != b]
     _report_filter(name, py_cls, rs_cls, kwargs, texts, bad, report)
-    run_ok = ref["run"] == got["run"] and ref["stats"] == got["stats"]
+    run_ok = all(ref[k] == got[k] for k in ("run", "stats", "excluded"))
     if not run_ok:
         report.write(f"## {name} run/stats\nkwargs={kwargs}\npy={ref['stats']}\nrs={got['stats']}\n")
     return len(bad), run_ok

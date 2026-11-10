@@ -6,6 +6,21 @@ Scripts and raw results: `/srv/agents/work/fineweb-profile/` (outside the repo; 
 LanguageFilter 2.1%, URLFilter 0.7%, TokensCounter 0.4%; everything else (MinHash stages 2-4 included) < 0.5%.
 datatrove_rs makes its own steps 21-28x faster, but the whole recipe only ~1.12x (Amdahl).
 
+## With trafex (byte-exact Rust trafilatura, Hexay/trafex) — same 5000 records
+
+Output digest identical across pure / rs / rs+trafex. `run_trafex.sh` in the profile dir.
+
+| Run | pure | rs | rs + trafex |
+|---|---:|---:|---:|
+| Executor (tasks=1, sandboxed), wall s | 87.7 | – | **17.3 (5.1x)** |
+| Executor CPU s (parent + sandbox child) | 87.6 | – | 17.3 |
+| Executor Trafilatura step, s | 71.7 | – | 10.4 |
+| Chained in-process, CPU s (2 reps) | 77-100 | 74-82 | **8.4-11.0 (~9x)** |
+| Trafilatura share of chained CPU | 86% | 96% | 77% |
+
+The executor result is lower than in-process because of fixed costs: startup, WarcReader (2 s), sandbox IPC.
+Trafilatura is still the largest step; after it come WarcReader, URLFilter, and LanguageFilter at ~1.5-2 s each.
+
 ## Setup
 
 - WARC: `CC-MAIN-2024-10/.../CC-MAIN-20240220211055-20240221001055-00000.warc.gz`; first 5,000 HTML responses

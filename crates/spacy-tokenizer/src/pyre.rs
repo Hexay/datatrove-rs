@@ -43,7 +43,7 @@ fn quantifier(chars: &[char], i: usize) -> Option<(String, usize)> {
         None => (body.as_str(), None),
     };
     let digits = |s: &str| s.chars().all(|c| c.is_ascii_digit());
-    if !digits(lo) || !hi.map_or(true, digits) || (lo.is_empty() && hi.map_or(true, str::is_empty)) {
+    if !digits(lo) || !hi.is_none_or(digits) || (lo.is_empty() && hi.is_none_or(str::is_empty)) {
         return None;
     }
     let lo = if lo.is_empty() { "0" } else { lo };

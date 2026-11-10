@@ -45,10 +45,8 @@ impl Simplifier {
         Self {
             cfg,
             weekdays: Regex::new("monday|tuesday|wednesday|thursday|friday|saturday|sunday").unwrap(),
-            months: Regex::new(
-                "january|february|march|april|may|june|july|august|september|october|november|december",
-            )
-            .unwrap(),
+            months: Regex::new("january|february|march|april|may|june|july|august|september|october|november|december")
+                .unwrap(),
             a: String::new(),
             b: String::new(),
             chars: Vec::new(),
@@ -105,7 +103,9 @@ fn normalize_numbers(s: &str, out: &mut String) {
         }
         while it.next_if(|&x| nd.contains(x)).is_some() {}
         let mut ahead = it.clone();
-        if ahead.next().is_some_and(|x| DECIMAL_SEPARATORS.contains(&x)) && ahead.peek().is_some_and(|&x| nd.contains(x)) {
+        if ahead.next().is_some_and(|x| DECIMAL_SEPARATORS.contains(&x))
+            && ahead.peek().is_some_and(|&x| nd.contains(x))
+        {
             it.next();
             while it.next_if(|&x| nd.contains(x)).is_some() {}
         }

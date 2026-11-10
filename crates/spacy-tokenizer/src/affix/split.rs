@@ -283,7 +283,7 @@ impl Affixes for SplitAffixes {
                     });
                 }
                 if let Some(Some((st, len))) = cand[k] {
-                    if best.map_or(true, |(b, _)| st < b) {
+                    if best.is_none_or(|(b, _)| st < b) {
                         best = Some((st, len));
                     }
                 }

@@ -65,7 +65,13 @@ fn split_newline_runs(s: &str, min: usize) -> Vec<&str> {
 
 impl GopherRepetition {
     pub fn new(cfg: GopherRepetitionConfig) -> Self {
-        Self { cfg, words: Words::default(), joined: Default::default(), top: Default::default(), dup: Default::default() }
+        Self {
+            cfg,
+            words: Words::default(),
+            joined: Default::default(),
+            top: Default::default(),
+            dup: Default::default(),
+        }
     }
 
     pub fn filter(&mut self, text: &str) -> FilterResult {
@@ -108,6 +114,7 @@ impl GopherRepetition {
             for &(n, frac) in &c.top_n_grams {
                 // top <= bound and float division is monotone, so a bound that passes proves the n-gram passes.
                 if let Some(bound) = self.top.bound(&self.joined, n) {
+                    #[allow(clippy::neg_cmp_op_on_partial_ord)] // mirrors the exact check below, NaN included
                     if !(div(bound, text_len)? > frac) {
                         continue;
                     }

@@ -18,7 +18,16 @@ struct Args {
 }
 
 fn parse_args() -> Args {
-    let mut a = Args { path: String::new(), backend: Backend::Split, cache: 10_000, reps: 5, limit: usize::MAX, strings: false, no_matcher: false, dump: None };
+    let mut a = Args {
+        path: String::new(),
+        backend: Backend::Split,
+        cache: 10_000,
+        reps: 5,
+        limit: usize::MAX,
+        strings: false,
+        no_matcher: false,
+        dump: None,
+    };
     let mut it = std::env::args().skip(1);
     while let Some(x) = it.next() {
         let mut val = || it.next().expect("missing value");

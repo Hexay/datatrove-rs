@@ -39,6 +39,7 @@ fn py_all_duplicate(words: &[&str], n: usize) -> usize {
     repeated
 }
 
+#[rustfmt::skip]
 const VOCAB: &[&str] = &[
     "a", "b", "ab", "ba", "aa", "é", "aé", ".", "the", "of", "ofthe", "thecat", "cat", "abcdefghijklmnop",
     "abcdefghijklmnopq", "abcdefghijklmno", "abcdefghijklmnopabcdefghijklmnop", "ééééééééé", "x\0", "\0",

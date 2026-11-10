@@ -116,7 +116,8 @@ mod tests {
 
     #[test]
     fn mod_mersenne_matches_remainder() {
-        let edge = [0, 1, MERSENNE_PRIME - 1, MERSENNE_PRIME, MERSENNE_PRIME + 1, 2 * MERSENNE_PRIME, u64::MAX, u64::MAX - 7];
+        let edge =
+            [0, 1, MERSENNE_PRIME - 1, MERSENNE_PRIME, MERSENNE_PRIME + 1, 2 * MERSENNE_PRIME, u64::MAX, u64::MAX - 7];
         let mut x = 0x9e37_79b9_7f4a_7c15u64;
         let random = (0..1_000_000).map(|_| {
             x ^= x << 13;

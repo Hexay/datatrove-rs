@@ -108,6 +108,8 @@ fn main() {
         ("  rep: no drops, + top n-grams", rep_cfg(never(&top), vec![], 1e9)),
         ("  rep: no drops, + dup n-grams", rep_cfg(vec![], never(&dup), 1e9)),
         ("  rep: no drops, all", rep_cfg(never(&top), never(&dup), 1e9)),
+        ("  rep: default top n-grams only", rep_cfg(top.clone(), vec![], 1e9)),
+        ("  rep: default dup n-grams only", rep_cfg(vec![], dup.clone(), 1e9)),
     ] {
         let mut rep = GopherRepetition::new(cfg);
         time(name, &docs, reps, |d| {

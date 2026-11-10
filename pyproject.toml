@@ -9,7 +9,7 @@ description = "Drop-in Rust implementations of datatrove's English Gopher, C4, F
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 # datatrove imports `regex` in utils/text.py without declaring it.
-dependencies = ["datatrove>=0.10,<0.11", "numpy", "regex"]
+dependencies = ["datatrove>=0.10.1,<0.11", "numpy", "regex"]
 
 [project.optional-dependencies]
 # datatrove 0.10's Python MinHash passes str to xxhash, which xxhash 4 rejects.

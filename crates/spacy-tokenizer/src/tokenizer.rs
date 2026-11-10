@@ -4,8 +4,7 @@
 
 use crate::affix::{self, Affixes, Backend};
 use crate::rules::{CharSet, PyClasses, RulesJson};
-use crate::specials::{self, PhraseTrie, Span, Specials};
-use rustc_hash::FxHashMap;
+use crate::specials::{self, hash_str, LensTable, PhraseTrie, Span, Specials};
 
 pub struct Tokenizer {
     aff: Box<dyn Affixes>,
@@ -18,7 +17,7 @@ pub struct Tokenizer {
 /// Per-caller mutable state: output, buffers and spaCy's chunk cache.
 pub struct State {
     pub tokens: Vec<Span>,
-    cache: FxHashMap<Box<str>, Box<[u32]>>,
+    cache: LensTable,
     cache_max: usize,
     prefixes: Vec<u32>,
     suffixes: Vec<u32>,
@@ -31,7 +30,7 @@ impl State {
     pub fn new(cache_max: usize) -> Self {
         Self {
             tokens: Vec::new(),
-            cache: FxHashMap::default(),
+            cache: LensTable::default(),
             cache_max,
             prefixes: Vec::new(),
             suffixes: Vec::new(),
@@ -99,35 +98,52 @@ impl Tokenizer {
 
     fn tokenize_affixes(&self, text: &str, with_special: bool, st: &mut State) {
         st.tokens.clear();
-        let Some(first) = text.chars().next() else { return };
+        let bytes = text.as_bytes();
+        if bytes.is_empty() {
+            return;
+        }
         let mut has_special = false;
-        let mut in_ws = self.space.contains(first);
-        let mut start = 0;
-        for (i, c) in text.char_indices() {
-            if self.space.contains(c) != in_ws {
+        let mut in_ws = self.space_at(text, 0).0;
+        let (mut start, mut i) = (0, 0);
+        while i < bytes.len() {
+            let (ws, len) = self.space_at(text, i);
+            if ws != in_ws {
                 if start < i {
                     self.chunk(text, start, i, with_special, &mut has_special, st);
                 }
                 // A single ' ' after a token is absorbed as that token's trailing space.
-                start = if c == ' ' { i + 1 } else { i };
+                start = if bytes[i] == b' ' { i + 1 } else { i };
                 in_ws = !in_ws;
             }
+            i += len;
         }
         if start < text.len() {
             self.chunk(text, start, text.len(), with_special, &mut has_special, st);
         }
     }
 
+    /// (isspace, UTF-8 length) of the char starting at byte `i`; ASCII skips UTF-8 decoding.
+    #[inline(always)]
+    fn space_at(&self, text: &str, i: usize) -> (bool, usize) {
+        let b = text.as_bytes()[i];
+        if b < 0x80 {
+            return (self.space.contains(b as char), 1);
+        }
+        let c = text[i..].chars().next().unwrap();
+        (self.space.contains(c), c.len_utf8())
+    }
+
     fn chunk(&self, text: &str, a: usize, b: usize, with_special: bool, has_special: &mut bool, st: &mut State) {
         let span = &text[a..b];
         let mut c = Chunk { text: span, base: a as u32, cursor: 0, has_special: *has_special };
         let orig = st.tokens.len();
-        if !self.try_specials_and_cache(&mut c, span, with_special, st) {
+        let h = hash_str(span);
+        if !self.try_specials_and_cache(&mut c, h, span, with_special, st) {
             let (core_a, core_b) = self.split_affixes(span, with_special, st);
             self.attach_tokens(&mut c, core_a, core_b, with_special, st);
             if !c.has_special && st.cache.len() < st.cache_max {
                 let lens = st.tokens[orig..].iter().map(|&(x, y)| y - x).collect();
-                st.cache.insert(span.into(), lens);
+                st.cache.insert_new(h, span, lens);
             }
         }
         *has_special = c.has_special;
@@ -145,25 +161,22 @@ impl Tokenizer {
         c.cursor += len;
     }
 
-    fn try_specials_and_cache(&self, c: &mut Chunk, s: &str, with_special: bool, st: &mut State) -> bool {
+    /// spaCy checks specials before the cache; probing the cache first is equivalent because only
+    /// non-special strings are ever cached, and it skips the specials probe on the common hit.
+    fn try_specials_and_cache(&self, c: &mut Chunk, h: u64, s: &str, with_special: bool, st: &mut State) -> bool {
+        let State { cache, tokens, .. } = &mut *st;
+        if let Some(lens) = cache.get(h, s) {
+            lens.iter().for_each(|&l| Self::push_to(c, tokens, l));
+            return true;
+        }
         if with_special {
-            if let Some(lens) = self.specials.get(s) {
+            if let Some(lens) = self.specials.get_hashed(h, s) {
                 lens.iter().for_each(|&l| Self::push(c, st, l));
                 c.has_special = true;
                 return true;
             }
         }
-        if st.cache_max == 0 {
-            return false;
-        }
-        let State { cache, tokens, .. } = st;
-        match cache.get(s) {
-            Some(lens) => {
-                lens.iter().for_each(|&l| Self::push_to(c, tokens, l));
-                true
-            }
-            None => false,
-        }
+        false
     }
 
     /// Returns the core's byte range within `s`; prefix/suffix lengths go to `st`.
@@ -206,7 +219,7 @@ impl Tokenizer {
         let State { prefixes, tokens, .. } = &mut *st;
         prefixes.iter().for_each(|&l| Self::push_to(c, tokens, l));
         let core = &c.text[a..b];
-        if !core.is_empty() && !self.try_specials_and_cache(c, core, with_special, st) {
+        if !core.is_empty() && !self.try_specials_and_cache(c, hash_str(core), core, with_special, st) {
             if self.aff.token_match(core) || self.aff.url_match(core) {
                 Self::push(c, st, core.len() as u32);
             } else {

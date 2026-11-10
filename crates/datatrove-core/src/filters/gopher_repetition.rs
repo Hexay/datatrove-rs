@@ -191,6 +191,9 @@ impl GopherRepetition {
     }
 
     pub fn filter(&mut self, text: &str) -> FilterResult {
+        if text.is_empty() {
+            return drop("empty");
+        }
         let c = &self.cfg;
         let text_len = char_len(text);
 

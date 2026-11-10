@@ -1,5 +1,6 @@
-//! profile <docs.bin> [reps] — per-stage timing of the Rust core with datatrove's default configs.
+//! profile <docs.bin> [reps] [stage-substring] — per-stage timing of the Rust core with datatrove's default configs.
 //! docs.bin: UTF-8 docs joined by '\0' (see crates/spacy-tokenizer/src/bin/bench.rs).
+//! With a stage filter, only matching stages run, so `perf stat -e instructions:u` measures one stage under load.
 
 use datatrove_core::filters::c4::{C4Config, C4};
 use datatrove_core::filters::fineweb::{FineWeb, FineWebConfig};
@@ -11,7 +12,12 @@ use datatrove_core::words::Words;
 use spacy_tokenizer_rs::{english, Backend, State};
 use std::time::Instant;
 
+static ONLY: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+
 fn time(name: &str, docs: &[&str], reps: usize, mut f: impl FnMut(&str)) {
+    if ONLY.get().and_then(Option::as_deref).is_some_and(|o| !name.contains(o)) {
+        return;
+    }
     docs.iter().take(50).for_each(|d| f(d));
     let mut best = f64::MAX;
     for _ in 0..reps {
@@ -48,6 +54,7 @@ fn main() {
         return stream_cache_sizes(&docs);
     }
     let reps = args.get(2).map_or(5, |r| r.parse().unwrap());
+    ONLY.set(args.get(3).cloned()).unwrap();
 
     let tok = english(Backend::Split);
     for (name, cache) in [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)] {

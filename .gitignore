@@ -6,3 +6,4 @@ __pycache__/
 *.pdb
 parity_mismatches.txt
 .pytest_cache/
+.claude/

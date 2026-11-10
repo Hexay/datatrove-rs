@@ -20,11 +20,23 @@ struct LookAlt {
     find: Regex,
     options: Vec<Regex>,
     lookahead: Option<(bool, Regex)>,
+    edge: Option<CharSet>,
 }
 
+/// `edge`: chars a match can start with (prefix/infix runs) or end with (suffix runs); see `admits`.
 enum Run {
-    Plain { find: Regex, at_start: Regex },
+    Plain { find: Regex, at_start: Regex, edge: Option<CharSet> },
     Look(LookAlt),
+}
+
+impl Run {
+    #[inline]
+    fn edge(&self) -> &Option<CharSet> {
+        match self {
+            Run::Plain { edge, .. } => edge,
+            Run::Look(l) => &l.edge,
+        }
+    }
 }
 
 /// True when the pattern can match at most one length at a given start (no alternation or
@@ -64,7 +76,8 @@ impl LookAlt {
         }
         let core = translate(core, cls)?;
         let find = rx(&if suffix { format!("(?:{core})$") } else { format!("(?:{core})") })?;
-        Ok(Self { lookbehind, find, options, lookahead })
+        let edge = edge_set(&core, !suffix);
+        Ok(Self { lookbehind, find, options, lookahead, edge })
     }
 
     #[inline]
@@ -125,7 +138,7 @@ fn build_runs(py: &str, cls: &PyClasses, suffix: bool) -> Result<Vec<Run>, Strin
         if !plain.is_empty() {
             let body = plain.join("|");
             let find = rx(&if suffix { format!("(?:{body})$") } else { format!("(?:{body})") })?;
-            runs.push(Run::Plain { find, at_start: rx(&format!("^(?:{body})"))? });
+            runs.push(Run::Plain { find, at_start: rx(&format!("^(?:{body})"))?, edge: edge_set(&body, !suffix) });
             plain.clear();
         }
         Ok(())
@@ -217,10 +230,11 @@ fn admits(set: &Option<CharSet>, c: Option<char>) -> bool {
 
 impl Affixes for SplitAffixes {
     fn prefix_len(&self, s: &str) -> usize {
-        if !admits(&self.prefix_first, s.chars().next()) {
+        let first = s.chars().next();
+        if !admits(&self.prefix_first, first) {
             return 0;
         }
-        for run in &self.prefix {
+        for run in self.prefix.iter().filter(|r| admits(r.edge(), first)) {
             let len = match run {
                 Run::Plain { at_start, .. } => at_start.find(s).map(|m| m.end()),
                 Run::Look(l) => l.match_at(s, 0),
@@ -233,10 +247,11 @@ impl Affixes for SplitAffixes {
     }
 
     fn suffix_len(&self, s: &str) -> usize {
-        if !admits(&self.suffix_last, s.chars().next_back()) {
+        let last = s.chars().next_back();
+        if !admits(&self.suffix_last, last) {
             return 0;
         }
-        let start = self.suffix.iter().filter_map(|run| match run {
+        let start = self.suffix.iter().filter(|r| admits(r.edge(), last)).filter_map(|run| match run {
             Run::Plain { find, .. } => find.find(s).map(|m| m.start()),
             Run::Look(l) => l.suffix_start(s),
         });

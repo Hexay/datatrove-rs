@@ -44,7 +44,6 @@ struct Chunk<'a> {
     text: &'a str,
     base: u32,
     cursor: u32,
-    has_special: bool,
 }
 
 impl Tokenizer {
@@ -102,14 +101,13 @@ impl Tokenizer {
         if bytes.is_empty() {
             return;
         }
-        let mut has_special = false;
         let mut in_ws = self.space_at(text, 0).0;
         let (mut start, mut i) = (0, 0);
         while i < bytes.len() {
             let (ws, len) = self.space_at(text, i);
             if ws != in_ws {
                 if start < i {
-                    self.chunk(text, start, i, with_special, &mut has_special, st);
+                    self.chunk(text, start, i, with_special, st);
                 }
                 // A single ' ' after a token is absorbed as that token's trailing space.
                 start = if bytes[i] == b' ' { i + 1 } else { i };
@@ -118,7 +116,7 @@ impl Tokenizer {
             i += len;
         }
         if start < text.len() {
-            self.chunk(text, start, text.len(), with_special, &mut has_special, st);
+            self.chunk(text, start, text.len(), with_special, st);
         }
     }
 
@@ -133,20 +131,21 @@ impl Tokenizer {
         (self.space.contains(c), c.len_utf8())
     }
 
-    fn chunk(&self, text: &str, a: usize, b: usize, with_special: bool, has_special: &mut bool, st: &mut State) {
+    /// spaCy stops caching for the rest of a doc once any special case is seen, and "\n" is one, so its
+    /// cache rarely applies past line 1. A chunk's tokens depend only on its string, so we cache them all.
+    fn chunk(&self, text: &str, a: usize, b: usize, with_special: bool, st: &mut State) {
         let span = &text[a..b];
-        let mut c = Chunk { text: span, base: a as u32, cursor: 0, has_special: *has_special };
+        let mut c = Chunk { text: span, base: a as u32, cursor: 0 };
         let orig = st.tokens.len();
         let h = hash_str(span);
         if !self.try_specials_and_cache(&mut c, h, span, with_special, st) {
             let (core_a, core_b) = self.split_affixes(span, with_special, st);
             self.attach_tokens(&mut c, core_a, core_b, with_special, st);
-            if !c.has_special && st.cache.len() < st.cache_max {
+            if with_special && st.cache.len() < st.cache_max {
                 let lens = st.tokens[orig..].iter().map(|&(x, y)| y - x).collect();
                 st.cache.insert_new(h, span, lens);
             }
         }
-        *has_special = c.has_special;
     }
 
     #[inline]
@@ -172,7 +171,6 @@ impl Tokenizer {
         if with_special {
             if let Some(lens) = self.specials.get_hashed(h, s) {
                 lens.iter().for_each(|&l| Self::push(c, st, l));
-                c.has_special = true;
                 return true;
             }
         }

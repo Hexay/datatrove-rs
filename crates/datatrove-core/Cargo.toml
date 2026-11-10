@@ -1,0 +1,15 @@
+[package]
+name = "datatrove-core"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Bit-exact Rust ports of datatrove's Gopher, C4, FineWeb filters and MinHash signatures"
+
+[dependencies]
+spacy-tokenizer-rs = { path = "../spacy-tokenizer" }
+regex = { workspace = true }
+rustc-hash = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+xxhash-rust = { version = "0.8", features = ["xxh32", "xxh64"] }
+sha1_smol = "1"

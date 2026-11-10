@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "datatrove-rs"
+version = "0.1.0"
+description = "Drop-in Rust implementations of datatrove's English Gopher, C4, FineWeb filters and MinHash stage 1"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+# datatrove imports `regex` in utils/text.py without declaring it.
+dependencies = ["datatrove>=0.10,<0.11", "numpy", "regex"]
+
+[project.optional-dependencies]
+# datatrove 0.10's Python MinHash passes str to xxhash, which xxhash 4 rejects.
+test = ["pytest", "pyarrow", "spacy>=3.8,<3.9", "xxhash<4", "tokenizers"]
+
+[tool.maturin]
+manifest-path = "crates/datatrove-py/Cargo.toml"
+python-source = "python"
+module-name = "datatrove_rs._core"

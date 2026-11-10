@@ -1,0 +1,14 @@
+[package]
+name = "datatrove-py"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+datatrove-core = { path = "../datatrove-core" }
+pyo3 = { version = "0.29", features = ["extension-module", "abi3-py310"] }

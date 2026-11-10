@@ -1,0 +1,8 @@
+/target/
+/.venv/
+__pycache__/
+*.pyd
+*.so
+*.pdb
+parity_mismatches.txt
+.pytest_cache/

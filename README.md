@@ -11,6 +11,13 @@ rewritten `doc.text`, stats and signature files.
 | `pipeline.filters.C4QualityFilter` | `datatrove_rs.C4QualityFilter` |
 | `pipeline.filters.FineWebQualityFilter` | `datatrove_rs.FineWebQualityFilter` |
 | `pipeline.dedup.MinhashDedupSignature` | `datatrove_rs.MinhashDedupSignature` |
+| `pipeline.extractors.Trafilatura` | `datatrove_rs.extractors.Trafilatura`, with the `[trafilatura]` extra |
+
+The Trafilatura step runs [trafilatura-rs](https://github.com/Hexay/trafilatura-rs), a byte-exact Rust port of
+trafilatura 1.11 (`pip install "datatrove-rs[trafilatura]"`). Without it, datatrove's own Trafilatura runs. Configs
+trafilatura-rs doesn't cover fall back to Python per step. On the FineWeb recipe, where Trafilatura is ~85% of CPU,
+this takes the whole stage from 87.7 s to 17.3 s on 5,000 Common Crawl records (5.1x, identical output; see
+`docs/fineweb-profile.md`).
 
 Each class subclasses the datatrove step and takes the same arguments. `filter()` (MinHash: `get_shingles` /
 `get_signature`) is replaced. The filters also override `run()` with an inlined copy of `BaseFilter.run()` whose stat

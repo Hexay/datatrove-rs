@@ -20,7 +20,7 @@ def replacements() -> dict[type, type]:
         out[_datatrove_base(MinhashDedupSignature)] = MinhashDedupSignature
     except ImportError:
         pass
-    if importlib.util.find_spec("trafex") is not None:
+    if importlib.util.find_spec("trafilatura_rs") is not None:
         from datatrove_rs.extractors import Trafilatura
 
         out[_datatrove_base(Trafilatura)] = Trafilatura

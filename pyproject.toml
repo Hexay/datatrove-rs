@@ -40,6 +40,8 @@ Issues = "https://github.com/Hexay/datatrove-rs/issues"
 [project.optional-dependencies]
 # datatrove 0.10's Python MinHash passes str to xxhash, which xxhash 4 rejects.
 test = ["pytest", "pyarrow", "spacy>=3.8,<3.9", "xxhash<4", "tokenizers"]
+# Byte-exact Rust Trafilatura extractor; its own extra pins trafilatura/lxml to the versions it matches.
+trafilatura = ["trafilatura-rs[trafilatura]>=0.1,<0.2"]
 
 [tool.maturin]
 manifest-path = "crates/datatrove-py/Cargo.toml"

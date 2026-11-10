@@ -1,10 +1,10 @@
-"""datatrove_rs.extractors.Trafilatura (trafex-backed); skipped when trafex is not installed."""
+"""datatrove_rs.extractors.Trafilatura (trafilatura-rs-backed); skipped when trafilatura-rs is not installed."""
 
 import pickle
 
 import pytest
 
-pytest.importorskip("trafex")
+pytest.importorskip("trafilatura_rs")
 pytest.importorskip("trafilatura")
 
 from datatrove.pipeline.extractors import Trafilatura as DtTrafilatura  # noqa: E402

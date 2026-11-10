@@ -50,4 +50,11 @@ jobs:
           wheel=$(ls dist/*.whl)
           python -m pip install "${wheel}[test]" "${{ matrix.datatrove.spec }}"
           python -m pip list | grep -iE "^(datatrove|spacy|xxhash) "
+      - name: Install trafilatura-rs (Trafilatura extractor tests skip until it is on PyPI)
+        run: |
+          if python -m pip index versions trafilatura-rs >/dev/null 2>&1; then
+            python -m pip install "$(ls dist/*.whl)[trafilatura]"
+          else
+            echo "::warning::trafilatura-rs is not on PyPI yet; tests/test_extractors.py will skip"
+          fi
       - run: python -m pytest -q tests

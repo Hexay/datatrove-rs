@@ -26,27 +26,29 @@ from datatrove_rs import (C4QualityFilter, FineWebQualityFilter, GopherQualityFi
 
 Swap the imports in an existing pipeline; nothing else changes.
 
-Requires datatrove `>=0.10,<0.11` and Python 3.10+ (one abi3 wheel). spaCy is still needed for the fallback paths
+Requires datatrove `>=0.10.1,<0.11` and Python 3.10+ (one abi3 wheel). spaCy is still needed for the fallback paths
 listed below.
 
 ## Speed
 
-Single thread, 1,000 FineWeb docs (3.0 MB), median of 3 runs (`tools/dev.sh bench <fineweb.parquet> 1000 3`):
+Single thread, 1,000 FineWeb docs (3.0 MB), median of 3 runs (`tools/dev.sh bench <fineweb.parquet> 1000 3`),
+Ryzen 7 9700X, datatrove 0.10.1, Python 3.13:
 
 | Step | datatrove docs/s | datatrove_rs docs/s | Speedup |
 |---|---|---|---|
-| GopherRepetition | 50 | 2,376 | 48x |
-| GopherQuality | 82 | 3,961 | 49x |
-| C4Quality | 65 | 2,237 | 35x |
-| FineWebQuality | 52 | 3,403 | 66x |
-| Chain (`run()`, all 4 filters) | 20 | 707 | 36x |
-| MinHash stage 1 | 55 | 1,964 | 36x |
+| GopherRepetition | 195 | 16,987 | 87x |
+| GopherQuality | 267 | 21,087 | 79x |
+| C4Quality | 268 | 13,119 | 49x |
+| FineWebQuality | 268 | 23,063 | 86x |
+| Chain (`run()`, all 4 filters) | 99 | 6,831 | 69x |
+| MinHash stage 1 | 269 | 12,780 | 48x |
 
-The machine was under load from other processes, so absolute numbers swing a lot between runs. Across every run the
-speedup stayed between 30x and 70x. The chain tokenizes each doc once and shares the result across steps (see `words.rs`).
+The machine was under heavy load from other processes, so absolute numbers swing between runs; compare the ratio.
+All filters on a thread share one tokenizer state and the last doc's tokens (see `words.rs`).
 
-Where the time goes (`cargo run --release -p datatrove-core --bin profile -- <docs.bin>`): the spaCy-compatible tokenizer is about
-120 µs/doc and dominates. It is limited by per-chunk hash lookups, not by regexes. Python `run()` plumbing is about
+Where the time goes (`profile <docs.bin> [reps] [stage]`, `tools/icount.sh`): the spaCy-compatible tokenizer still
+dominates (~45 µs/doc streamed). It runs about three times per doc in the chain: whole doc, C4's per-line sentence
+split, and FineWeb on C4's rewritten text (mostly chunk-cache hits). Python `run()` plumbing is about
 60% cheaper than datatrove's `BaseFilter.run()` (`tools/profile_chain.py <fineweb.parquet>`: 99k vs 249k Python calls
 for the 4-step chain over 1,000 docs).
 
@@ -110,11 +112,19 @@ tests/                   pytest parity suite
 ## Development
 
 ```
-py -3 -m venv .venv && .venv/Scripts/python -m pip install maturin -e ".[test]"
+uv venv -p 3.13 .venv && uv pip install -p .venv/bin/python maturin -e ".[test]"
 tools/dev.sh build                 # maturin develop --release
 tools/dev.sh test                  # pytest
 tools/dev.sh parity <parquet> ...  # large parity run
 tools/dev.sh bench <parquet> [n] [reps]
+tools/icount.sh <docs.bin> <stage>...                  # instructions + cycles/doc per `profile` stage
+crates/spacy-tokenizer/tools/parity.sh <docs.bin>      # tokenizer vs spaCy, token spans
 ```
+
+Use Python 3.13 so the running Unicode version matches the shipped tables. To test against an upstream checkout,
+add `-e <path-to-datatrove>` to the install. `docs.bin` is UTF-8 docs joined by `\0`.
+
+Wall time is unreliable on a loaded machine; A/B Rust changes with `tools/icount.sh` (instruction counts are
+load-independent) and confirm wall time by alternating old/new binaries.
 
 After upgrading Python or `regex`, re-export the Unicode tables with `tools/export_pytext.py`.

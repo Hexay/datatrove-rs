@@ -1,0 +1,75 @@
+# FineWeb recipe: where the CPU goes (datatrove 0.10.1 vs datatrove_rs, 2026-11-10)
+
+Scripts and raw results: `/srv/agents/work/fineweb-profile/` (outside the repo; `results/tables.md`).
+
+**Bottom line:** with datatrove_rs, Trafilatura is ~93% of end-to-end CPU. Next: WarcReader 2.2%,
+LanguageFilter 2.1%, URLFilter 0.7%, TokensCounter 0.4%; everything else (MinHash stages 2-4 included) < 0.5%.
+datatrove_rs makes its own steps 21-28x faster, but the whole recipe only ~1.12x (Amdahl).
+
+## Setup
+
+- WARC: `CC-MAIN-2024-10/.../CC-MAIN-20240220211055-20240221001055-00000.warc.gz`; first 5,000 HTML responses
+  (`WarcReader(limit=5000)`, 417 MB decoded HTML).
+- Funnel: 5000 → URLFilter 4956 → Trafilatura 4611 → LanguageFilter(en) 1343 → GopherRep 1010 → GopherQual 651
+  → C4 584 → FineWebQual 481 → MinHash −11 → 470. Pure and rs outputs identical (same sha256).
+- Python 3.13, trafilatura 1.11.0, lxml 6.1.3 / libxml2 2.14.6, spaCy 3.8, fasttext lid.176, single process.
+- Measured as chained generators (as the executor runs them): materializing each step over the whole list
+  breaks datatrove's `lru_cache(5)` on `split_into_parts` and overstates pure filter cost ~15x for GopherQuality.
+- CPU time varies up to ±25% between identical runs (load avg 25-40); per-step shares are stable to ±1-2 points.
+
+## Stage A, 5000 HTML records, chained, CPU s (median of 3)
+
+| Step | in → out | pure s | pure % | rs s | rs % |
+|---|---|---:|---:|---:|---:|
+| WarcReader | – → 5000 | 1.80 | 2.2% | 1.80 | 2.3% |
+| URLFilter | 5000 → 4956 | 0.49 | 0.6% | 0.56 | 0.7% |
+| **Trafilatura** | 4956 → 4611 | **69.7** | **84.3%** | **75.3** | **94.2%** |
+| LanguageFilter | 4611 → 1343 | 1.64 | 2.0% | 1.72 | 2.2% |
+| GopherRepetition | 1343 → 1010 | 4.79 | 5.8% | 0.30 | 0.4% |
+| GopherQuality | 1010 → 651 | 0.22 | 0.3% | 0.04 | 0.1% |
+| C4Quality | 651 → 584 | 2.52 | 3.0% | 0.07 | 0.1% |
+| FineWebQuality | 584 → 481 | 1.42 | 1.7% | 0.02 | 0.0% |
+| JsonlWriter (gzip) | 481 | 0.11 | 0.1% | 0.13 | 0.2% |
+
+Trafilatura pure vs rs differ only by noise (same code; range 62-117 s across 6 runs).
+
+## MinHash 1-4 and post-dedup (481 docs, CPU s)
+
+| Step | pure | rs |
+|---|---:|---:|
+| MinhashDedupSignature | 1.60 | 0.06 (28x) |
+| Buckets / Cluster / Filter | ~0.01 | ~0.01 |
+| TokensCounter (gpt2, already Rust) | 0.30 | 0.31 |
+| PIIFormatter (two `re.sub`) | 0.07 | 0.08 |
+
+Synthetic stage 2 at realistic fan-in (500 sig files): ~33 µs/doc over 14 buckets, < 0.05% of stage A.
+
+## Inside Trafilatura (`favor_precision=True`, fallbacks on, datatrove defaults)
+
+| Phase (inclusive) | share |
+|---|---:|
+| `prune_unwanted_nodes` (libxml2 XPath + node removal) | ~50% |
+| └ in `compare_extraction`, re-pruning a deepcopy of the full tree | ~27% |
+| readability + jusText fallback (`compare_extraction` total) | ~45% |
+| `extract_content` main path | ~33% |
+| lxml parsing (29k parses for 4956 docs) | ~5% |
+
+By leaf: libxml2 C 57%, CPython 22%, libc 21%. p50 6.8 ms/doc, p99 67 ms. `no_fallback=True` halves the cost
+but changes output.
+
+Exactness hazards for any port: output depends on libxml2 2.14 HTML error recovery (parser can't be swapped),
+XPath semantics, readability float scoring order, jusText thresholds; trafilatura's process-global dedup cache
+(`LRU_TEST`, 4096) makes output depend on earlier docs; datatrove's 1 s wall-clock sandbox timeout makes the doc
+set load-dependent (4610 vs 4611 passed on identical runs).
+
+## Ranked port candidates
+
+1. **Trafilatura (93.5%).** Full port (~3.9k lines trafilatura + 0.9k jusText over libxml2 via FFI, XPath →
+   compiled predicates): est. 5-10x on the step, 4-7x end to end; high difficulty and exactness risk. Partial port
+   (only the XPath pruning, on lxml's libxml2 nodes): est. 1.6-1.9x on the step; fragile coupling to lxml's
+   bundled libxml2.
+2. **WarcReader (2.2%).** zlib 40%, warcio header parsing 35%, charset detection 12%. Rust reader ~2-3x; low risk
+   if decoding stays in Python.
+3. **LanguageFilter (2.1%).** fasttext C++ is 62%; the rest is glue requesting all 176 labels. ≤ 0.8% to gain.
+4. **URLFilter (0.7%).** Banned-word generator loop; a set intersection in Python fixes it. Not worth Rust.
+5. TokensCounter, writers, PIIFormatter, MinHash 2-4: already native or negligible.

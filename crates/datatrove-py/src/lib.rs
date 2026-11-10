@@ -155,7 +155,11 @@ impl PyC4Quality {
     }
 
     /// `(result, new_text | None, line_outcomes)`; outcome bytes index `LINE_STATS` in `filters.py`.
-    fn filter<'py>(&mut self, py: Python<'py>, text: &str) -> PyResult<(Py<PyAny>, Option<String>, Bound<'py, PyBytes>)> {
+    fn filter<'py>(
+        &mut self,
+        py: Python<'py>,
+        text: &str,
+    ) -> PyResult<(Py<PyAny>, Option<String>, Bound<'py, PyBytes>)> {
         let out = self.0.filter(text);
         let codes: Vec<u8> = out.lines.iter().map(|o| line_code(*o)).collect();
         Ok((to_py(py, Ok(out.verdict))?, out.text, PyBytes::new(py, &codes)))
@@ -196,7 +200,14 @@ fn u64s(bytes: &[u8]) -> PyResult<Vec<u64>> {
 impl PyMinHasher {
     /// `norm` = TextNormConfig fields in declaration order; `a`/`b` = the numpy uint64 parameters' bytes.
     #[new]
-    fn new(n_grams: usize, norm: (bool, bool, bool, bool, bool, bool, bool), hash_fc: &str, precision: u32, a: &[u8], b: &[u8]) -> PyResult<Self> {
+    fn new(
+        n_grams: usize,
+        norm: (bool, bool, bool, bool, bool, bool, bool),
+        hash_fc: &str,
+        precision: u32,
+        a: &[u8],
+        b: &[u8],
+    ) -> PyResult<Self> {
         let hash_fn = match hash_fc {
             "xxhash" => HashFn::Xxhash,
             "sha1" => HashFn::Sha1,
@@ -234,8 +245,15 @@ fn le_bytes(v: &[u64]) -> Vec<u8> {
 }
 
 fn norm_config(norm: (bool, bool, bool, bool, bool, bool, bool)) -> NormConfig {
-    let (lowercase, norm_whitespace, remove_punctuation, norm_unicode_diacritics, norm_numbers, norm_weekdays, norm_monthnames) =
-        norm;
+    let (
+        lowercase,
+        norm_whitespace,
+        remove_punctuation,
+        norm_unicode_diacritics,
+        norm_numbers,
+        norm_weekdays,
+        norm_monthnames,
+    ) = norm;
     NormConfig {
         lowercase,
         norm_whitespace,

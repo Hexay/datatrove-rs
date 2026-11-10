@@ -43,7 +43,11 @@ fn stream_cache_sizes(docs: &[&str]) {
         }
     }
     for (s, total) in sizes.iter().zip(totals) {
-        println!("stream, chunk cache {s:>8}: {:8.0} docs/s {:7.1} us/doc", docs.len() as f64 / total, total / docs.len() as f64 * 1e6);
+        println!(
+            "stream, chunk cache {s:>8}: {:8.0} docs/s {:7.1} us/doc",
+            docs.len() as f64 / total,
+            total / docs.len() as f64 * 1e6
+        );
     }
 }
 
@@ -58,7 +62,9 @@ fn main() {
     ONLY.set(args.get(3).cloned()).unwrap();
 
     let tok = english(Backend::Split);
-    for (name, cache) in [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)] {
+    for (name, cache) in
+        [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)]
+    {
         let mut st = State::new(cache);
         time(name, &docs, reps, |d| tok.tokenize(d, &mut st));
     }

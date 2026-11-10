@@ -17,8 +17,10 @@ pub struct RulesJson {
     pub py_s: Vec<(u32, u32)>,
 }
 
-impl RulesJson {
-    pub fn from_str(json: &str) -> Result<Self, String> {
+impl std::str::FromStr for RulesJson {
+    type Err = String;
+
+    fn from_str(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|e| e.to_string())
     }
 }

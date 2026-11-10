@@ -37,11 +37,7 @@ pub fn build(r: &RulesJson, cls: &PyClasses, backend: Backend) -> Result<Box<dyn
 }
 
 pub(crate) fn rx(pattern: &str) -> Result<regex::Regex, String> {
-    regex::RegexBuilder::new(pattern)
-        .size_limit(256 << 20)
-        .dfa_size_limit(64 << 20)
-        .build()
-        .map_err(|e| e.to_string())
+    regex::RegexBuilder::new(pattern).size_limit(256 << 20).dfa_size_limit(64 << 20).build().map_err(|e| e.to_string())
 }
 
 pub(crate) fn fancy(pattern: &str) -> Result<fancy_regex::Regex, String> {

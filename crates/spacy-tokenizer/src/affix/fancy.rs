@@ -12,9 +12,7 @@ pub struct FancyAffixes {
 }
 
 fn compile(py: &Option<String>, cls: &PyClasses, anchor: bool) -> Result<Option<Regex>, String> {
-    py.as_deref()
-        .map(|p| fancy(&if anchor { anchored(p, cls)? } else { translate(p, cls)? }))
-        .transpose()
+    py.as_deref().map(|p| fancy(&if anchor { anchored(p, cls)? } else { translate(p, cls)? })).transpose()
 }
 
 impl FancyAffixes {

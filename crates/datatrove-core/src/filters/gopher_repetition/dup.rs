@@ -86,7 +86,9 @@ impl DupNGrams {
                 let (s, h) = (j.span(idx, n), j.word_hash(a, len));
                 let found = seen.find(h, |&i| j.span(i as usize, n) == s).is_some();
                 if !found {
-                    seen.insert_unique(h, idx as u32, |&i| j.word_hash(j.start(i as usize), j.span(i as usize, n).len()));
+                    seen.insert_unique(h, idx as u32, |&i| {
+                        j.word_hash(j.start(i as usize), j.span(i as usize, n).len())
+                    });
                 }
                 found
             };

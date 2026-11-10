@@ -6,10 +6,36 @@ build-backend = "maturin"
 name = "datatrove-rs"
 version = "0.1.0"
 description = "Drop-in Rust implementations of datatrove's English Gopher, C4, FineWeb filters and MinHash stage 1"
+readme = "README.md"
 license = { text = "Apache-2.0" }
+authors = [{ name = "Hexay" }]
 requires-python = ">=3.10"
+keywords = ["datatrove", "llm", "pretraining", "data-filtering", "deduplication", "minhash", "fineweb", "rust"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
 # datatrove imports `regex` in utils/text.py without declaring it.
 dependencies = ["datatrove>=0.10.1,<0.11", "numpy", "regex"]
+
+[project.urls]
+Homepage = "https://github.com/Hexay/datatrove-rs"
+Repository = "https://github.com/Hexay/datatrove-rs"
+Issues = "https://github.com/Hexay/datatrove-rs/issues"
 
 [project.optional-dependencies]
 # datatrove 0.10's Python MinHash passes str to xxhash, which xxhash 4 rejects.

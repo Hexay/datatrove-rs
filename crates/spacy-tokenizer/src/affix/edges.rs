@@ -33,7 +33,8 @@ fn edge(h: &Hir, first: bool) -> Option<(ClassUnicode, bool)> {
         }
         HirKind::Concat(v) => {
             let mut acc = empty;
-            let items: Box<dyn Iterator<Item = &Hir>> = if first { Box::new(v.iter()) } else { Box::new(v.iter().rev()) };
+            let items: Box<dyn Iterator<Item = &Hir>> =
+                if first { Box::new(v.iter()) } else { Box::new(v.iter().rev()) };
             for x in items {
                 let (s, n) = edge(x, first)?;
                 acc.union(&s);

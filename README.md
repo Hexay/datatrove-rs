@@ -139,3 +139,21 @@ Wall time is unreliable on a loaded machine; A/B Rust changes with `tools/icount
 load-independent) and confirm wall time by alternating old/new binaries.
 
 After upgrading Python or `regex`, re-export the Unicode tables with `tools/export_pytext.py`.
+
+Rust code is formatted with the repo's `rustfmt.toml`; CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`,
+`clippy -D warnings`, `cargo test --release` and the pytest suite on Python 3.13 against datatrove 0.10.1 and the
+latest 0.10.x.
+
+## Releasing
+
+1. Bump `version` in `pyproject.toml` (the published version; the crate versions don't matter) and merge to `master`.
+2. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`. The tag must equal `v` + the pyproject version.
+3. `.github/workflows/release.yml` builds abi3 wheels (Linux x86_64/aarch64 manylinux_2_28, macOS x86_64/arm64,
+   Windows x64) and an sdist, import-tests each, and publishes to PyPI by trusted publishing.
+
+One-time setup:
+
+- PyPI: on https://pypi.org/manage/account/publishing/ add a pending publisher (or, once the project exists,
+  Manage project > Publishing): PyPI project name `datatrove-rs`, owner `Hexay`, repository `datatrove-rs`, workflow
+  `release.yml`, environment `pypi`.
+- GitHub: Settings > Environments > New environment `pypi` (optionally with required reviewers and a `v*` tag rule).

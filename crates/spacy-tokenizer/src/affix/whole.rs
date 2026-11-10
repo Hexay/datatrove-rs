@@ -23,6 +23,6 @@ impl WholeMatcher {
     #[inline]
     pub fn is_match(m: &Option<Self>, s: &str) -> bool {
         let Some(m) = m else { return false };
-        m.fast.is_match(s) && m.confirm.as_ref().map_or(true, |c| c.is_match(s).expect("backtrack limit"))
+        m.fast.is_match(s) && m.confirm.as_ref().is_none_or(|c| c.is_match(s).expect("backtrack limit"))
     }
 }

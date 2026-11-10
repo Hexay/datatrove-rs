@@ -48,7 +48,7 @@ struct Chunk<'a> {
 
 impl Tokenizer {
     pub fn from_json(json: &str, backend: Backend) -> Result<Self, String> {
-        let r = RulesJson::from_str(json)?;
+        let r: RulesJson = json.parse()?;
         let cls = PyClasses::new(&r);
         let mut tok = Self {
             aff: affix::build(&r, &cls, backend)?,

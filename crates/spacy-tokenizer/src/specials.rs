@@ -29,6 +29,10 @@ impl LensTable {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// chunk -> byte lengths of its ORTH pieces (ORTHs concatenate to the chunk; spaCy validates this).
@@ -119,6 +123,10 @@ impl PhraseTrie {
 
     pub fn len(&self) -> usize {
         self.terminal.iter().filter(|&&t| t).count()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        !self.terminal.contains(&true)
     }
 
     #[inline]

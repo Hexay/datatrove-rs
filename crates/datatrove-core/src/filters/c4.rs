@@ -60,7 +60,11 @@ impl C4 {
         let mut kept: Vec<String> = Vec::new();
         let mut num_sentences: i64 = 0;
         let mut line_l = String::new();
-        let dropped = |reason: &'static str, lines| C4Outcome { verdict: Verdict::Drop(Cow::Borrowed(reason)), text: None, lines };
+        let dropped = |reason: &'static str, lines| C4Outcome {
+            verdict: Verdict::Drop(Cow::Borrowed(reason)),
+            text: None,
+            lines,
+        };
 
         for raw in raw_lines {
             let stripped = strip(raw);
@@ -70,7 +74,9 @@ impl C4 {
                 continue;
             }
             let line: Cow<str> = if c.remove_citations { remove_citations(stripped) } else { Cow::Borrowed(stripped) };
-            if c.filter_no_terminal_punct && (!END_PUNCTUATION.iter().any(|p| line.ends_with(p)) || line.ends_with("...")) {
+            if c.filter_no_terminal_punct
+                && (!END_PUNCTUATION.iter().any(|p| line.ends_with(p)) || line.ends_with("..."))
+            {
                 lines.push(LineOutcome::NoTerminalPunc);
                 continue;
             }

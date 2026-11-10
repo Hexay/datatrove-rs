@@ -137,7 +137,10 @@ impl TopNGrams {
 
 /// (top count, position of its first occurrence). `Counter.most_common(1)` takes the first max in insertion
 /// order, i.e. the highest count with the earliest first occurrence; counts only grow, so tracking it online is exact.
-fn first_most_common<K: Hash + Eq>(map: &mut FxHashMap<K, (u32, u32)>, keys: impl ExactSizeIterator<Item = K>) -> (u32, u32) {
+fn first_most_common<K: Hash + Eq>(
+    map: &mut FxHashMap<K, (u32, u32)>,
+    keys: impl ExactSizeIterator<Item = K>,
+) -> (u32, u32) {
     map.reserve(keys.len());
     let mut best = (0, u32::MAX);
     for (i, k) in keys.enumerate() {

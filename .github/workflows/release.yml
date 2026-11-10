@@ -36,6 +36,7 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           python -c "import datatrove_rs, datatrove_rs._core"
+          DATATROVE_RS=1 python -c "from datatrove.pipeline.filters import GopherQualityFilter as G; assert G.__module__ == 'datatrove_rs.filters', G"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}-${{ matrix.target }}

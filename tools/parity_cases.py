@@ -16,6 +16,8 @@ FILTER_CASES = [
     ("FineWebQuality[exclude zero]", dt.FineWebQualityFilter, rs.FineWebQualityFilter, {"line_punct_exclude_zero": True}),
     ("C4Quality", dt.C4QualityFilter, rs.C4QualityFilter, {}),
     ("C4Quality[sentences]", dt.C4QualityFilter, rs.C4QualityFilter, {"split_paragraph": False}),
+    ("C4Quality[batch 4]", dt.C4QualityFilter, rs.C4QualityFilter, {"batch_size": 4}),
+    ("GopherRepetition[batch 3]", dt.GopherRepetitionFilter, rs.GopherRepetitionFilter, {"batch_size": 3}),
 ]
 
 MINHASH_CASES = [
@@ -97,4 +99,8 @@ def random_filter_cases(k: int, seed: int = 0):
         ("FineWebQuality", dt.FineWebQualityFilter, rs.FineWebQualityFilter, _fineweb),
         ("C4Quality", dt.C4QualityFilter, rs.C4QualityFilter, _c4),
     ]
-    return [(f"{name}[rand{i}]", py, rsc, make(rng)) for i in range(k) for name, py, rsc, make in kinds]
+    return [
+        (f"{name}[rand{i}]", py, rsc, make(rng) | {"batch_size": rng.choice([1, 1, 2, 5])})
+        for i in range(k)
+        for name, py, rsc, make in kinds
+    ]

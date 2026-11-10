@@ -12,8 +12,10 @@ rewritten `doc.text`, stats and signature files.
 | `filters.FineWebQualityFilter` | `datatrove_rs.FineWebQualityFilter` |
 | `dedup.MinhashDedupSignature` | `datatrove_rs.MinhashDedupSignature` |
 
-Each class subclasses the datatrove step and takes the same arguments. Only `filter()` (MinHash: `get_shingles` /
-`get_signature`) is replaced, so `run()`, stats, writers and executors behave exactly as in datatrove.
+Each class subclasses the datatrove step and takes the same arguments. `filter()` (MinHash: `get_shingles` /
+`get_signature`) is replaced. The filters also override `run()` with an inlined copy of `BaseFilter.run()` whose stat
+bookkeeping is cheaper but bit-for-bit identical (see `python/datatrove_rs/_run.py`); a subclass that overrides
+`filter`, `filter_batch`, `stat_update`, `update_doc_stats` or `track_time` gets datatrove's `run()` instead.
 
 ## Usage
 
@@ -44,8 +46,9 @@ The machine was under load from other processes, so absolute numbers swing a lot
 speedup stayed between 30x and 70x. The chain tokenizes each doc once and shares the result across steps (see `words.rs`).
 
 Where the time goes (`cargo run --release -p datatrove-core --bin profile -- <docs.bin>`): the spaCy-compatible tokenizer is about
-120 µs/doc and dominates. It is limited by per-chunk hash lookups, not by regexes. The Python `run()` plumbing adds
-about 50 µs/doc for the 4-step chain.
+120 µs/doc and dominates. It is limited by per-chunk hash lookups, not by regexes. Python `run()` plumbing is about
+60% cheaper than datatrove's `BaseFilter.run()` (`tools/profile_chain.py <fineweb.parquet>`: 99k vs 249k Python calls
+for the 4-step chain over 1,000 docs).
 
 ## Parity
 
@@ -53,14 +56,15 @@ Every check compares against datatrove running unmodified in the same environmen
 
 - `tools/dev.sh parity <fineweb.parquet> --real 6000 --fuzz 3000 --random-configs 3` runs 10,500 docs: 6,000 real
   FineWeb docs, 1,500 perturbed copies and 3,000 fuzzed docs (Unicode edge cases, separators, repetition). It covers
-  7 fixed filter configs, 12 random-threshold configs and 5 MinHash configs (xxhash 32/64, sha1 32/64, 3-gram with
+  9 fixed filter configs, 12 random-threshold configs and 5 MinHash configs (xxhash 32/64, sha1 32/64, 3-gram with
   4x6 buckets, dates/raw normalisation). It compares:
   - the per-doc result, or the raised exception type;
   - the rewritten `doc.text`;
-  - the `run()` output and every stat;
+  - the `run()` output, every stat field (`repr`, so int vs float counts), the time-stat count and unit, and what
+    the exclusion writer receives, at batch sizes 1 to 5;
   - the MinHash signature files, byte for byte.
 
-  Last run: **0 mismatches across all 24 cases.** Pass `--workers N --cache DIR` to parallelise and cache the
+  Last run (`--real 4000 --fuzz 2000 --random-configs 3`): **0 mismatches across all 26 cases.** Pass `--workers N --cache DIR` to parallelise and cache the
   datatrove side.
 - `tools/dev.sh test` (pytest) runs the parity cases on a smaller corpus. It also covers `simplify_text`, word
   splitting and sentence splitting on 2,500 random Unicode strings across 17 normalisation configs, the fallback for

@@ -6,6 +6,7 @@ use datatrove_core::filters::c4::{C4Config, C4};
 use datatrove_core::filters::fineweb::{FineWeb, FineWebConfig};
 use datatrove_core::filters::gopher_quality::{GopherQuality, GopherQualityConfig};
 use datatrove_core::filters::gopher_repetition::{GopherRepetition, GopherRepetitionConfig};
+use datatrove_core::filters::Verdict;
 use datatrove_core::minhash::{signature, HashConfig, HashFn, MinHasher};
 use datatrove_core::simplify::{NormConfig, Simplifier};
 use datatrove_core::words::Words;
@@ -157,6 +158,17 @@ fn main() {
     });
     time("FineWebQuality (4 stop chars)", &docs, reps, |d| {
         let _ = fw.filter(d);
+    });
+
+    let mut rep = GopherRepetition::new(rep_cfg(top.clone(), dup.clone(), 0.3));
+    time("chain: rep > qual > c4 > fineweb", &docs, reps, |d| {
+        if !matches!(rep.filter(d), Ok(Verdict::Keep)) || !matches!(qual.filter(d), Ok(Verdict::Keep)) {
+            return;
+        }
+        let out = c4.filter(d);
+        if matches!(out.verdict, Verdict::Keep) {
+            let _ = fw.filter(out.text.as_deref().unwrap_or(d));
+        }
     });
 
     let mut simp = Simplifier::new(NormConfig::default());

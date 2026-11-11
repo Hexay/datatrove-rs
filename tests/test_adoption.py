@@ -26,7 +26,17 @@ def test_patch_swaps_package_and_defining_module(patched):
     assert filters.GopherQualityFilter is rs.GopherQualityFilter
     assert gopher_quality_filter.GopherQualityFilter is rs.GopherQualityFilter
     assert filters.C4QualityFilter is rs.C4QualityFilter
-    assert filters.URLFilter.__module__.startswith("datatrove.")
+    assert filters.LambdaFilter.__module__.startswith("datatrove.")
+    assert filters.URLFilter.__module__ == "datatrove_rs.url_filter"
+
+
+def test_patch_covers_reader(patched):
+    from datatrove.pipeline.readers import WarcReader
+    from datatrove.pipeline.readers.warc import WarcReader as Defining
+
+    from datatrove_rs.readers import WarcReader as Ours
+
+    assert WarcReader is Ours and Defining is Ours
 
 
 def test_patch_covers_minhash(patched):
@@ -57,10 +67,10 @@ def test_patched_step_pickles_to_rust_class(patched):
 def test_mirror_swaps_without_touching_datatrove():
     from datatrove.pipeline import filters as dt_filters
 
-    from datatrove_rs.pipeline.filters import GopherQualityFilter, URLFilter
+    from datatrove_rs.pipeline.filters import GopherQualityFilter, LambdaFilter
 
     assert GopherQualityFilter is rs.GopherQualityFilter
-    assert URLFilter is dt_filters.URLFilter
+    assert LambdaFilter is dt_filters.LambdaFilter
     assert dt_filters.GopherQualityFilter is not rs.GopherQualityFilter
     assert not rs.is_patched()
 

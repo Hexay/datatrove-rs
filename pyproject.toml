@@ -39,7 +39,12 @@ Issues = "https://github.com/Hexay/datatrove-rs/issues"
 
 [project.optional-dependencies]
 # datatrove 0.10's Python MinHash passes str to xxhash, which xxhash 4 rejects.
-test = ["pytest", "pyarrow", "spacy>=3.8,<3.9", "xxhash<4", "tokenizers"]
+test = [
+    "pytest", "pyarrow", "spacy>=3.8,<3.9", "xxhash<4", "tokenizers",
+    # datatrove's WarcReader, URLFilter and LanguageFilter dependencies (+ fsspec HTTP for the lid model download)
+    "warcio", "faust-cchardet", "python-magic", "tldextract", "pyahocorasick", "fasteners", "fasttext-numpy2-wheel",
+    "requests", "aiohttp",
+]
 # Byte-exact Rust Trafilatura extractor; its own extra pins trafilatura/lxml to the versions it matches.
 trafilatura = ["trafilatura-rs[trafilatura]>=0.1.1,<0.2"]
 

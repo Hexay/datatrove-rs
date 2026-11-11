@@ -58,9 +58,12 @@ You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py
 | `filters.C4QualityFilter` | 49x | |
 | `filters.FineWebQualityFilter` | 86x | |
 | `dedup.MinhashDedupSignature` | 48x | MinHash stage 1 |
+| `readers.WarcReader` | ~2.2x | gzip WARCs; charset detection stays in Python |
+| `filters.URLFilter` | ~7x | mostly blocklist loading and tldextract setup |
+| `filters.LanguageFilter` | ~1.3x | the rest is fastText's own C++ inference |
 
 Filter and MinHash speedups are single-thread throughput on 1,000 FineWeb documents. Trafilatura's is inside the
-full pipeline. Full numbers and method: [docs/fineweb-profile.md](docs/fineweb-profile.md).
+full pipeline; reader, URL and language numbers are CPU time on 5,000 Common Crawl records. Full numbers and method: [docs/fineweb-profile.md](docs/fineweb-profile.md).
 
 Each replacement subclasses the datatrove step, takes the same arguments and produces the same results: keep/drop
 decisions, drop reasons, rewritten text, stats and MinHash signature files. Pickled pipelines work on Slurm and

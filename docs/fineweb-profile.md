@@ -21,6 +21,35 @@ Output digest identical across pure / rs / rs+trafex. `run_trafex.sh` in the pro
 The executor result is lower than in-process because of fixed costs: startup, WarcReader (2 s), sandbox IPC.
 Trafilatura is still the largest step; after it come WarcReader, URLFilter, and LanguageFilter at ~1.5-2 s each.
 
+## With Rust WarcReader, URLFilter and LanguageFilter (2026-11-11)
+
+`executor_run.py 5000 {pure,rsx,rsy}`: `rsy` = `rsx` plus `datatrove_rs` WarcReader/URLFilter/LanguageFilter.
+Output digest identical across pure / rsx / rsy, and every non-time step stat identical between rsx and rsy (pure
+differs only in LanguageFilter's input count: 2 docs hit Trafilatura's 1 s wall-clock sandbox timeout under load).
+Two runs each, alternated, load avg ~10:
+
+| | rsx | rsy |
+|---|---:|---:|
+| Executor wall, s | 25.1 / 26.9 | **15.9 / 18.3** |
+| Executor parent CPU, s | 8.7 / 9.1 | **3.6 / 4.0** |
+| WarcReader time stat, s | 2.13 / 2.26 | 0.45 / 0.52 |
+| URLFilter time stat, s | 2.52 / 2.59 | 0.21 / 0.27 |
+| LanguageFilter time stat, s | 1.61 / 1.78 | 1.01 / 1.11 |
+
+datatrove's WarcReader time stat covers only `process_record`, not warcio's iteration; the Rust reader's covers its
+whole record loop, so the reader's true speedup is the in-process number below. URLFilter's time includes loading the
+4.6M-domain blocklist and tldextract's suffix tries on the first document. What LanguageFilter keeps is fastText's own
+C++ inference (the thresholded call costs the same as `f.predict(text, k=1)`, 150 us/doc on 2.6k-char docs), so
+fastText itself is not ported.
+
+In-process CPU per step, 5,000 records (ranges over alternated runs, identical output and stats):
+
+| Step | datatrove s | datatrove_rs s | Speedup |
+|---|---:|---:|---:|
+| WarcReader (whole read) | 1.7-2.3 | 0.84-0.87 | ~2.2x |
+| URLFilter (setup + run) | 1.35-2.67 | 0.21-0.30 | ~7x |
+| LanguageFilter (run) | 0.56-0.61 | 0.44-0.45 | ~1.3x |
+
 ## Setup
 
 - WARC: `CC-MAIN-2024-10/.../CC-MAIN-20240220211055-20240221001055-00000.warc.gz`; first 5,000 HTML responses
@@ -88,3 +117,7 @@ set load-dependent (4610 vs 4611 passed on identical runs).
 3. **LanguageFilter (2.1%).** fasttext C++ is 62%; the rest is glue requesting all 176 labels. ≤ 0.8% to gain.
 4. **URLFilter (0.7%).** Banned-word generator loop; a set intersection in Python fixes it. Not worth Rust.
 5. TokensCounter, writers, PIIFormatter, MinHash 2-4: already native or negligible.
+
+Items 2-4 are done (section "With Rust WarcReader, URLFilter and LanguageFilter"). The executor measurement showed
+URLFilter's real cost is the one-time blocklist load (1.5 s) and tldextract trie build (0.3-0.5 s), not the per-doc
+loop, which is why it got a Rust loader and host split.

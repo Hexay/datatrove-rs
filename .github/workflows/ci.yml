@@ -45,6 +45,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip maturin
           maturin build --release --out dist
+      # libmagic for WarcReader's python-magic; the fastText lid.176 model (126 MB) for the LanguageFilter tests
+      - run: sudo apt-get install -y libmagic1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/assets/datatrove/lid
+          key: fasttext-lid176
       - name: Install wheel with test extra
         run: |
           wheel=$(ls dist/*.whl)

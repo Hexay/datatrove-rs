@@ -5,6 +5,9 @@ pub mod c4;
 pub mod fineweb;
 pub mod gopher_quality;
 pub mod gopher_repetition;
+pub mod strset;
+pub mod tld;
+pub mod url;
 
 use std::borrow::Cow;
 

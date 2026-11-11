@@ -1,7 +1,7 @@
 """`datatrove_rs.<path>` mirrors `datatrove.<path>` for every datatrove module, with Rust-backed classes swapped in.
 
-`from datatrove_rs.pipeline.filters import GopherQualityFilter, URLFilter` yields the Rust filter and datatrove's
-own URLFilter. Mirrors are copies of the datatrove module's namespace, so datatrove itself is left untouched
+`from datatrove_rs.pipeline.filters import GopherQualityFilter, LambdaFilter` yields the Rust filter and datatrove's
+own LambdaFilter. Mirrors are copies of the datatrove module's namespace, so datatrove itself is left untouched
 (unlike `patch()`). Names that exist as real datatrove_rs modules (`filters`, `minhash`, ...) are not mirrored.
 """
 

@@ -12,7 +12,12 @@ import sys
 from datatrove_rs._replacements import replacements
 
 # Modules whose import binds a replaced class; importing them up front lets the swap reach every later importer.
-_EXPORTERS = ("datatrove.pipeline.filters", "datatrove.pipeline.dedup", "datatrove.pipeline.extractors")
+_EXPORTERS = (
+    "datatrove.pipeline.filters",
+    "datatrove.pipeline.dedup",
+    "datatrove.pipeline.extractors",
+    "datatrove.pipeline.readers",
+)
 
 _swapped: list[tuple[object, str, type]] = []
 

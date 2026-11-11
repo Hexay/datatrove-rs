@@ -9,10 +9,21 @@ def replacements() -> dict[type, type]:
     """{datatrove class: datatrove_rs subclass}. MinHash is skipped when `datatrove.pipeline.dedup` can't import
     (it needs `tokenizers`, which filter-only installs may lack)."""
     from datatrove_rs import filters as rs
+    from datatrove_rs.language_filter import LanguageFilter
+    from datatrove_rs.readers import WarcReader
+    from datatrove_rs.url_filter import URLFilter
 
     out = {
         _datatrove_base(cls): cls
-        for cls in (rs.GopherRepetitionFilter, rs.GopherQualityFilter, rs.C4QualityFilter, rs.FineWebQualityFilter)
+        for cls in (
+            rs.GopherRepetitionFilter,
+            rs.GopherQualityFilter,
+            rs.C4QualityFilter,
+            rs.FineWebQualityFilter,
+            WarcReader,
+            URLFilter,
+            LanguageFilter,
+        )
     }
     try:
         from datatrove_rs.minhash import MinhashDedupSignature

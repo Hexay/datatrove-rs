@@ -36,6 +36,15 @@ def test_uncovered_config_falls_back_to_python():
     assert step._covered is False
 
 
+def test_mismatched_trafilatura_version_falls_back_to_python(monkeypatch):
+    import trafilatura_rs
+
+    monkeypatch.setattr(trafilatura_rs, "mismatched_versions", lambda: {"trafilatura": "1.10.0"})
+    step = Trafilatura(favour_precision=True, deduplicate=False)
+    assert step.extract(PAGES[0]) == DtTrafilatura(favour_precision=True, deduplicate=False).extract(PAGES[0])
+    assert step._covered is False
+
+
 def test_patch_and_mirror_replace_the_step():
     from datatrove_rs.pipeline.extractors import Trafilatura as Mirrored
 

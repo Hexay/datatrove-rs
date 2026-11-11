@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="148" viewBox="0 0 720 148" role="img" aria-label="FineWeb recipe, 5,000 Common Crawl pages">
+<style>
+.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.s{fill:#52514e;font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.l{fill:#0b0b0b;font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.v{fill:#52514e;font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.ours{fill:#2a78d6}.other{fill:#b9b8b3}.axis{stroke:#898781;stroke-width:1}
+@media (prefers-color-scheme:dark){.t,.l{fill:#f0efec}.s,.v{fill:#c3c2b7}.ours{fill:#3987e5}.other{fill:#5c5b57}}
+</style>
+<text class="t" x="0" y="20">FineWeb recipe, 5,000 Common Crawl pages</text>
+<text class="s" x="0" y="40">Wall time with datatrove's LocalPipelineExecutor, 1 task. Lower is better; output identical.</text>
+<line class="axis" x1="230" y1="56" x2="230" y2="144"/>
+<text class="l" x="220" y="79.5" text-anchor="end">datatrove</text>
+<path class="other" d="M230,62 h336.0 a4,4 0 0 1 4,4 v18 a4,4 0 0 1 -4,4 h-336.0 z"/>
+<text class="v" x="578.0" y="79.5">87.7 s</text>
+<text class="l" x="220" y="119.5" text-anchor="end" font-weight="600">datatrove-rs[trafilatura]</text>
+<path class="ours" d="M230,102 h63.06955530216648 a4,4 0 0 1 4,4 v18 a4,4 0 0 1 -4,4 h-63.06955530216648 z"/>
+<text class="v" x="305.06955530216646" y="119.5">17.3 s  (5.1x)</text>
+</svg>

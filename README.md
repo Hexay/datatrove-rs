@@ -66,7 +66,10 @@ You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py
 | `filters.URLFilter` | ~7x | mostly blocklist loading and tldextract setup |
 | `filters.LanguageFilter` | ~1.3x | the rest is fastText's own C++ inference |
 
-Filter and MinHash speedups are single-thread throughput on 1,000 FineWeb documents. Trafilatura's is inside the
+Filters and MinHash stage 1 run in Rust for the 57 languages spaCy tokenizes with rules (English plus German,
+French, Spanish, Russian, Italian, Portuguese, Polish, Dutch, Turkish, Indonesian and 46 more), with 53-88x on the
+four-filter chain in the ten largest. Filter and MinHash speedups are single-thread throughput on 1,000 FineWeb
+documents. Trafilatura's is inside the
 full pipeline; reader, URL and language numbers are CPU time on 5,000 Common Crawl records. MinHash stage 3 is CPU
 time on 37M duplicate pairs over 4.5M documents (default flags / with cluster ids and sizes); the formatters and
 C4BadWordsFilter on 12,000 FineWeb and 12,000 FineWeb-2 documents. Full numbers and method:
@@ -80,13 +83,15 @@ local multiprocessing workers whether or not the worker patched.
 
 Output equality with datatrove is the product, so every change is checked against unmodified datatrove:
 
-- **Filters and MinHash:** 10,500 real, perturbed and fuzzed documents across 26 configurations, 0 mismatches. The
-  spaCy-compatible tokenizer matches spaCy on 9.7M tokens.
+- **Filters and MinHash:** 10,500 real, perturbed and fuzzed documents across 26 configurations, 0 mismatches, plus
+  81,825 FineWeb-2 and fuzzed documents across the 56 other languages. The spaCy-compatible tokenizer matches spaCy
+  on 153M tokens in 57 languages.
 - **Trafilatura:** 10,666 of 10,666 Common Crawl pages identical (see trafilatura-rs).
 - **End to end:** the FineWeb recipe gives identical output on 5,000 Common Crawl records.
 
 When the Rust path can't guarantee identical results, the step falls back to datatrove's own code for that case.
-This applies to non-English languages and to Trafilatura options trafilatura-rs doesn't cover. Details and
+This applies to languages without a rule-based spaCy tokenizer (Chinese, Japanese, Vietnamese, Korean, Thai and
+others) and to Trafilatura options trafilatura-rs doesn't cover. Details and
 reproduced quirks are in [docs/parity.md](docs/parity.md).
 
 ## Contributing

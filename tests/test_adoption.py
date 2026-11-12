@@ -102,18 +102,31 @@ def test_mirror_maps_every_replacement():
     assert set(replacements().values()) >= {rs.GopherQualityFilter, rs.MinhashDedupSignature}
 
 
-def test_english_detection_does_not_build_spacy_tokenizer(monkeypatch):
+def test_language_detection_does_not_build_spacy_tokenizer(monkeypatch):
     from datatrove.utils import word_tokenizers
 
     from datatrove_rs import _base
 
-    _base.uses_spacy_english.cache_clear()
+    _base.rust_language.cache_clear()
     monkeypatch.setattr(word_tokenizers.SpaCyTokenizer, "__init__", lambda *a, **k: pytest.fail("built spaCy"))
     try:
-        assert _base.uses_spacy_english("eng") and _base.uses_spacy_english("en")
-        assert not _base.uses_spacy_english("deu")
+        assert _base.rust_language("eng") == _base.rust_language("en") == "en"
+        assert _base.rust_language("deu") == "de" and _base.rust_language("zul_Latn") == "tn"
+        # zh/ja (custom spaCy tokenizers), vi (pyvi), Kiwi, Stanza and Thai stay on datatrove's code.
+        assert all(_base.rust_language(x) is None for x in ("cmn", "jpn", "vie", "kor", "hin", "tha"))
     finally:
-        _base.uses_spacy_english.cache_clear()
+        _base.rust_language.cache_clear()
+
+
+def test_language_detection_for_tokenizer_instances():
+    from datatrove.utils.word_tokenizers import SpaCyTokenizer, WhitespaceTokenizer
+
+    from datatrove_rs import _base
+
+    for code in _base.rust_languages():
+        assert _base.rust_language(SpaCyTokenizer(code)) == code
+    assert _base.rust_language(SpaCyTokenizer("en", config={"nlp": {}})) is None
+    assert _base.rust_language(WhitespaceTokenizer()) is None
 
 
 def test_is_alpha_docs_use_rust_without_spacy(monkeypatch):

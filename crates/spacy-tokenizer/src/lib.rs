@@ -1,4 +1,5 @@
 pub mod affix;
+pub mod langs;
 pub mod pyalt;
 pub mod pyre;
 pub mod rules;
@@ -6,13 +7,11 @@ pub mod specials;
 pub mod tokenizer;
 
 pub use affix::Backend;
+pub use langs::{languages, tokenizer};
 pub use tokenizer::{State, Tokenizer};
 
-/// Rules exported from `spacy.blank("en")` by `tools/export_rules.py`.
-pub const EN_RULES: &str = include_str!("../data/en_rules.json");
-
 pub fn english(backend: Backend) -> Tokenizer {
-    Tokenizer::from_json(EN_RULES, backend).expect("embedded English rules")
+    tokenizer("en", backend).expect("en is embedded").expect("embedded English rules")
 }
 
 /// Byte spans -> (char_start, char_len), the units of spaCy's `token.idx` / `len(token.text)`.

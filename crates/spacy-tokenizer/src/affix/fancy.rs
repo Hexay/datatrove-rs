@@ -47,6 +47,7 @@ impl Affixes for FancyAffixes {
         while pos <= s.len() {
             let Some(m) = re.find_from_pos(s, pos).expect("backtrack limit") else { break };
             out.push((m.start(), m.end()));
+            // TODO: Python may still take a non-empty match at an empty match's position (see SplitAffixes::infixes).
             pos = if m.end() == m.start() { next_char_boundary(s, m.end()) } else { m.end() };
         }
     }

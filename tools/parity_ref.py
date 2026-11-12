@@ -11,10 +11,10 @@ from datatrove.data import Document
 from datatrove.utils.word_tokenizers import load_word_tokenizer
 
 
-def settle_is_alpha_state():
+def settle_is_alpha_state(language="eng"):
     """Both sides route "IS_ALPHA" docs to datatrove's shared spaCy tokenizer, whose behavior changes after its first
     "IS_ALPHA" token (see RustBacked.rust_for). Trigger that change up front so every process sees the same state."""
-    load_word_tokenizer("eng").word_tokenize("IS_ALPHA")
+    load_word_tokenizer(language).word_tokenize("IS_ALPHA")
 
 
 def digest(s: str | bytes) -> bytes:
@@ -41,16 +41,16 @@ def make_step(cls, kwargs, **extra):
 
 def _filter_chunk(args):
     cls, kwargs, texts = args
-    settle_is_alpha_state()
+    settle_is_alpha_state(kwargs.get("language", "eng"))
     step = make_step(cls, kwargs)
     return [filter_outcome(step, t) for t in texts]
 
 
 def _minhash_chunk(args):
-    cls, config, texts = args
-    settle_is_alpha_state()
+    cls, (config, language), texts = args
+    settle_is_alpha_state(language)
     with tempfile.TemporaryDirectory() as tmp:
-        step = cls(tmp, config=config)
+        step = cls(tmp, config=config, language=language)
         out = []
         for t in texts:
             s = step.get_shingles(t)
@@ -110,11 +110,11 @@ def filter_results(cls, kwargs, texts, workers=1, run_limit=None):
     return {"outcomes": outcomes, "run": ran, "stats": stats, "excluded": excluded}
 
 
-def minhash_results(cls, config, texts, workers=1):
+def minhash_results(cls, config, texts, workers=1, language="eng"):
     """Per-doc shingle+signature digests; then the signature files `run()` writes, by path."""
-    per_doc = _map_chunks(_minhash_chunk, cls, config, texts, workers)
+    per_doc = _map_chunks(_minhash_chunk, cls, (config, language), texts, workers)
     with tempfile.TemporaryDirectory() as tmp:
-        cls(tmp, config=config).run((Document(text=t, id=str(i)) for i, t in enumerate(texts)), rank=0)
+        cls(tmp, config=config, language=language).run((Document(text=t, id=str(i)) for i, t in enumerate(texts)), rank=0)
         files = {}
         for root, _, names in os.walk(tmp):
             for n in names:

@@ -1,6 +1,6 @@
 //! `MinHasher`: MinhashDedupSignature's shingling and signatures.
 
-use crate::norm_config;
+use crate::{norm_config, words};
 use datatrove_core::minhash::{signature, HashConfig, HashFn, MinHasher};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -35,6 +35,7 @@ impl PyMinHasher {
         precision: u32,
         a: &[u8],
         b: &[u8],
+        language: &str,
     ) -> PyResult<Self> {
         let hash_fn = match hash_fc {
             "xxhash" => HashFn::Xxhash,
@@ -42,7 +43,7 @@ impl PyMinHasher {
             other => return Err(PyValueError::new_err(format!("Unknown hash_fc={other:?}"))),
         };
         Ok(Self {
-            inner: MinHasher::new(n_grams, norm_config(norm), HashConfig { hash_fn, precision }),
+            inner: MinHasher::new(n_grams, norm_config(norm), HashConfig { hash_fn, precision }, words(language)?),
             a: u64s(a)?,
             b: u64s(b)?,
             precision,

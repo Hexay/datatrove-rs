@@ -1,6 +1,7 @@
 //! profile <docs.bin> [reps] [stage-substring] — per-stage timing of the Rust core with datatrove's default configs.
 //! docs.bin: UTF-8 docs joined by '\0' (see crates/spacy-tokenizer/src/bin/bench.rs).
 //! With a stage filter, only matching stages run, so `perf stat -e instructions:u` measures one stage under load.
+//! `PROFILE_LANG=de` profiles another embedded spaCy language (default en).
 
 use datatrove_core::filters::c4::{C4Config, C4};
 use datatrove_core::filters::fineweb::{FineWeb, FineWebConfig};
@@ -10,10 +11,22 @@ use datatrove_core::filters::Verdict;
 use datatrove_core::minhash::{signature, HashConfig, HashFn, MinHasher};
 use datatrove_core::simplify::{NormConfig, Simplifier};
 use datatrove_core::words::Words;
-use spacy_tokenizer_rs::{english, Backend, State};
+use spacy_tokenizer_rs::{tokenizer, Backend, State, Tokenizer};
 use std::time::Instant;
 
 static ONLY: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+
+fn lang() -> String {
+    std::env::var("PROFILE_LANG").unwrap_or_else(|_| "en".into())
+}
+
+fn words() -> Words {
+    Words::new(&lang()).unwrap()
+}
+
+fn lang_tokenizer() -> Tokenizer {
+    tokenizer(&lang(), Backend::Split).expect("embedded language").unwrap()
+}
 
 fn time(name: &str, docs: &[&str], reps: usize, mut f: impl FnMut(&str)) {
     if ONLY.get().and_then(Option::as_deref).is_some_and(|o| !name.contains(o)) {
@@ -31,7 +44,7 @@ fn time(name: &str, docs: &[&str], reps: usize, mut f: impl FnMut(&str)) {
 
 /// One pass over distinct docs, alternating cache sizes per 1000-doc block so machine load hits all equally.
 fn stream_cache_sizes(docs: &[&str]) {
-    let tok = english(Backend::Split);
+    let tok = lang_tokenizer();
     let sizes = [0usize, 10_000, 100_000, 1 << 20];
     let mut states: Vec<State> = sizes.iter().map(|&s| State::new(s)).collect();
     let mut totals = vec![0f64; sizes.len()];
@@ -61,7 +74,7 @@ fn main() {
     let reps = args.get(2).map_or(5, |r| r.parse().unwrap());
     ONLY.set(args.get(3).cloned()).unwrap();
 
-    let tok = english(Backend::Split);
+    let tok = lang_tokenizer();
     for (name, cache) in
         [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)]
     {
@@ -91,10 +104,10 @@ fn main() {
         }
     });
     std::hint::black_box(chunks);
-    let mut words = Words::default();
-    time("tokenize (split_into_words)", &docs, reps, |d| words.words(d, &mut Vec::new()));
+    let mut w = words();
+    time("tokenize (split_into_words)", &docs, reps, |d| w.words(d, &mut Vec::new()));
     time("sentence_count (whole doc)", &docs, reps, |d| {
-        words.sentence_count(d);
+        w.sentence_count(d);
     });
 
     let top = vec![(2, 0.2), (3, 0.18), (4, 0.16)];
@@ -117,58 +130,67 @@ fn main() {
         ("  rep: default top n-grams only", rep_cfg(top.clone(), vec![], 1e9)),
         ("  rep: default dup n-grams only", rep_cfg(vec![], dup.clone(), 1e9)),
     ] {
-        let mut rep = GopherRepetition::new(cfg);
+        let mut rep = GopherRepetition::new(cfg, words());
         time(name, &docs, reps, |d| {
             let _ = rep.filter(d);
         });
     }
 
-    let mut qual = GopherQuality::new(GopherQualityConfig {
-        min_doc_words: Some(50.0),
-        max_doc_words: Some(100_000.0),
-        min_avg_word_length: Some(3.0),
-        max_avg_word_length: Some(10.0),
-        max_symbol_word_ratio: Some(0.1),
-        max_bullet_lines_ratio: Some(0.9),
-        max_ellipsis_lines_ratio: Some(0.3),
-        max_non_alpha_words_ratio: Some(0.8),
-        min_stop_words: Some(2.0),
-        stop_words: ["the", "be", "to", "of", "and", "that", "have", "with"].map(String::from).to_vec(),
-    });
+    let mut qual = GopherQuality::new(
+        GopherQualityConfig {
+            min_doc_words: Some(50.0),
+            max_doc_words: Some(100_000.0),
+            min_avg_word_length: Some(3.0),
+            max_avg_word_length: Some(10.0),
+            max_symbol_word_ratio: Some(0.1),
+            max_bullet_lines_ratio: Some(0.9),
+            max_ellipsis_lines_ratio: Some(0.3),
+            max_non_alpha_words_ratio: Some(0.8),
+            min_stop_words: Some(2.0),
+            stop_words: ["the", "be", "to", "of", "and", "that", "have", "with"].map(String::from).to_vec(),
+        },
+        words(),
+    );
     time("GopherQuality", &docs, reps, |d| {
         let _ = qual.filter(d);
     });
 
-    let mut c4 = C4::new(C4Config {
-        split_paragraph: true,
-        remove_citations: true,
-        filter_no_terminal_punct: true,
-        min_num_sentences: 5,
-        min_words_per_line: 3,
-        max_word_length: 1000,
-        filter_lorem_ipsum: true,
-        filter_javascript: true,
-        filter_curly_bracket: true,
-        filter_policy: true,
-    });
+    let mut c4 = C4::new(
+        C4Config {
+            split_paragraph: true,
+            remove_citations: true,
+            filter_no_terminal_punct: true,
+            min_num_sentences: 5,
+            min_words_per_line: 3,
+            max_word_length: 1000,
+            filter_lorem_ipsum: true,
+            filter_javascript: true,
+            filter_curly_bracket: true,
+            filter_policy: true,
+        },
+        words(),
+    );
     time("C4Quality", &docs, reps, |d| {
         c4.filter(d);
     });
 
-    let mut fw = FineWeb::new(FineWebConfig {
-        line_punct_thr: 0.12,
-        line_punct_exclude_zero: false,
-        stop_chars: [".", "!", "?", "\u{2026}"].map(String::from).to_vec(),
-        short_line_thr: 0.67,
-        short_line_length: 30,
-        char_duplicates_ratio: 0.01,
-        new_line_ratio: 0.3,
-    });
+    let mut fw = FineWeb::new(
+        FineWebConfig {
+            line_punct_thr: 0.12,
+            line_punct_exclude_zero: false,
+            stop_chars: [".", "!", "?", "\u{2026}"].map(String::from).to_vec(),
+            short_line_thr: 0.67,
+            short_line_length: 30,
+            char_duplicates_ratio: 0.01,
+            new_line_ratio: 0.3,
+        },
+        words(),
+    );
     time("FineWebQuality (4 stop chars)", &docs, reps, |d| {
         let _ = fw.filter(d);
     });
 
-    let mut rep = GopherRepetition::new(rep_cfg(top.clone(), dup.clone(), 0.3));
+    let mut rep = GopherRepetition::new(rep_cfg(top.clone(), dup.clone(), 0.3), words());
     time("chain: rep > qual > c4 > fineweb", &docs, reps, |d| {
         if !matches!(rep.filter(d), Ok(Verdict::Keep)) || !matches!(qual.filter(d), Ok(Verdict::Keep)) {
             return;
@@ -183,7 +205,8 @@ fn main() {
     time("simplify_text", &docs, reps, |d| {
         simp.simplify(d);
     });
-    let mut mh = MinHasher::new(5, NormConfig::default(), HashConfig { hash_fn: HashFn::Xxhash, precision: 64 });
+    let mut mh =
+        MinHasher::new(5, NormConfig::default(), HashConfig { hash_fn: HashFn::Xxhash, precision: 64 }, words());
     let mut sh = Vec::new();
     time("MinHash shingles", &docs, reps, |d| mh.shingles(d, &mut sh));
     let a: Vec<u64> = (1..=112u64).map(|i| i.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 3).collect();

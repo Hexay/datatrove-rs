@@ -49,8 +49,8 @@ pub struct C4 {
 }
 
 impl C4 {
-    pub fn new(cfg: C4Config) -> Self {
-        Self { cfg, words: Words::default() }
+    pub fn new(cfg: C4Config, words: Words) -> Self {
+        Self { cfg, words }
     }
 
     pub fn filter(&mut self, text: &str) -> C4Outcome {

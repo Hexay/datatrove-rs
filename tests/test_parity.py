@@ -29,9 +29,9 @@ def test_minhash_parity(name, cfg):
     assert (bad, files_ok) == (0, True), report.getvalue()[:4000]
 
 
-def test_non_english_falls_back_to_python():
-    f = rs.GopherQualityFilter(language="deu")
-    assert f.rust() is None
+def test_unported_tokenizers_fall_back_to_python():
+    for language in ("cmn", "jpn", "kor"):
+        assert rs.GopherQualityFilter(language=language).rust() is None
 
 
 def test_pickles_without_rust_handle():

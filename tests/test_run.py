@@ -96,10 +96,10 @@ def test_overridden_filter_falls_back_to_datatrove_run():
     assert step.stats["dropped_custom"].n == 10
 
 
-def test_non_english_runs_python_path():
+def test_non_english_runs_fast_path():
     texts = DOCS[:20]
     a, b = dt.GopherQualityFilter(language="fra"), rs.GopherQualityFilter(language="fra")
-    assert not b._can_run_fast(b.rust())
+    assert b._can_run_fast(b.rust())
     assert _live_trace(a, texts) == _live_trace(b, texts)
 
 

@@ -21,8 +21,8 @@ pub struct FineWeb {
 }
 
 impl FineWeb {
-    pub fn new(cfg: FineWebConfig) -> Self {
-        Self { cfg, words: Words::default() }
+    pub fn new(cfg: FineWebConfig, words: Words) -> Self {
+        Self { cfg, words }
     }
 
     pub fn filter(&mut self, text: &str) -> FilterResult {

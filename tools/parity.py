@@ -57,11 +57,11 @@ def check_filter(name, py_cls, rs_cls, kwargs, texts, report, workers=1, cache_d
     return len(bad), run_ok
 
 
-def check_minhash(name, cfg, texts, report, workers=1, cache_dir=None):
+def check_minhash(name, cfg, texts, report, workers=1, cache_dir=None, language="eng"):
     config = dtm.MinhashConfig(**cfg)
-    ref = cached(cache_dir, ("minhash", name, repr(config), _corpus_key(texts)),
-                 lambda: minhash_results(dtm.MinhashDedupSignature, config, texts, workers))
-    got = minhash_results(RsMinhash, config, texts)
+    ref = cached(cache_dir, ("minhash", name, repr(config), language, _corpus_key(texts)),
+                 lambda: minhash_results(dtm.MinhashDedupSignature, config, texts, workers, language))
+    got = minhash_results(RsMinhash, config, texts, language=language)
     bad = [i for i, (a, b) in enumerate(zip(ref["outcomes"], got["outcomes"])) if a != b]
     for i in bad[:20]:
         report.write(f"## {name} doc {i}\ntext={texts[i][:300]!r}\n")
@@ -78,24 +78,29 @@ def main():
     ap.add_argument("--run-limit", type=int, default=None, help="docs fed to the sequential run()/stats pass")
     ap.add_argument("--cache", default=None, help="directory caching datatrove-side results")
     ap.add_argument("--out", default="parity_mismatches.txt")
+    ap.add_argument("--language", default=None, help="datatrove language passed to every step (default: theirs)")
     args = ap.parse_args()
 
+    lang = {"language": args.language} if args.language else {}
+    settle_is_alpha_state(args.language or "eng")
     real = pq.read_table(args.parquet, columns=["text"]).slice(0, args.real).column("text").to_pylist()
     texts = real + perturb(real[: args.real // 4]) + fuzz_docs(args.fuzz)
     print(f"{len(texts)} docs: {len(real)} real, {args.real // 4} perturbed, {args.fuzz} fuzz; {args.workers} workers")
+    if args.language and not RsMinhash(".", language=args.language).rust():
+        print(f"note: no Rust path for language {args.language!r}; this compares datatrove with itself")
     failed = False
     with open(args.out, "w", encoding="utf-8") as report:
         for name, py_cls, rs_cls, kwargs in FILTER_CASES + random_filter_cases(args.random_configs):
             t = time.perf_counter()
             bad, run_ok = check_filter(
-                name, py_cls, rs_cls, kwargs, texts, report, args.workers, args.cache, args.run_limit
+                name, py_cls, rs_cls, kwargs | lang, texts, report, args.workers, args.cache, args.run_limit
             )
             failed |= bool(bad) or not run_ok
             verdict = "identical" if run_ok else "DIFFER"
             print(f"{name:32} mismatched docs {bad:5}   run()+stats {verdict:9} {time.perf_counter() - t:6.0f}s")
         for name, cfg in MINHASH_CASES:
             t = time.perf_counter()
-            bad, files_ok = check_minhash(name, cfg, texts, report, args.workers, args.cache)
+            bad, files_ok = check_minhash(name, cfg, texts, report, args.workers, args.cache, args.language or "eng")
             failed |= bool(bad) or not files_ok
             verdict = "identical" if files_ok else "DIFFER"
             print(f"{name:32} mismatched docs {bad:5}   sig files   {verdict:9} {time.perf_counter() - t:6.0f}s")

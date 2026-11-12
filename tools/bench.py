@@ -1,6 +1,6 @@
 """Throughput of datatrove's Python steps vs datatrove_rs, single thread, same docs.
 
-Usage: bench.py <fineweb.parquet> [n_docs=1500] [reps=3]
+Usage: bench.py <fineweb.parquet> [n_docs=1500] [reps=3] [language]
 
 Filters are timed via `filter()` on fresh Documents; the chain runs GopherRepetition -> GopherQuality ->
 C4Quality -> FineWebQuality through `run()` as a FineWeb-style pipeline would. MinHash times
@@ -37,8 +37,11 @@ def timed(fn, reps):
     return statistics.median(times)
 
 
+LANG = {"language": sys.argv[4]} if len(sys.argv) > 4 else {}
+
+
 def filter_all(cls, texts):
-    step = cls()
+    step = cls(**LANG)
     return lambda: [step.filter(Document(text=t, id="0")) for t in texts]
 
 
@@ -46,14 +49,14 @@ def chain(classes, texts):
     def run():
         docs = (Document(text=t, id=str(i)) for i, t in enumerate(texts))
         for cls in classes:
-            docs = cls().run(docs, rank=0)
+            docs = cls(**LANG).run(docs, rank=0)
         return sum(1 for _ in docs)
 
     return run
 
 
 def minhash(cls, texts, tmp):
-    step = cls(tmp)
+    step = cls(tmp, **LANG)
 
     def run():
         for t in texts:
@@ -75,7 +78,7 @@ def main():
     rows.append(("Chain (run, 4 filters)", chain([s[1] for s in STEPS], texts), chain([s[2] for s in STEPS], texts)))
     rows.append(("MinHash stage 1", minhash(dtm.MinhashDedupSignature, texts, tmp), minhash(RsMinhash, texts, tmp)))
 
-    print(f"{n} docs, {mb:.1f} MB, median of {reps}\n")
+    print(f"{n} docs, {mb:.1f} MB, median of {reps}, language {LANG.get('language', 'default')}\n")
     print(f"| Step | datatrove docs/s | datatrove_rs docs/s | speedup |\n|---|---|---|---|")
     for name, py_fn, rs_fn in rows:
         py_fn(), rs_fn()  # warm-up: tokenizer construction, spaCy load

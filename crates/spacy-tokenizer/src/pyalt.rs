@@ -100,7 +100,8 @@ pub struct PyAlt {
     pub start_anchor: bool,
     pub end_anchor: bool,
     pub lookbehind: Option<String>,
-    pub lookahead: Option<(bool, String)>,
+    /// Trailing lookaheads (positive?, body), all checked at the end of the core (sl has two).
+    pub lookahead: Vec<(bool, String)>,
     pub core: String,
 }
 
@@ -122,27 +123,30 @@ impl PyAlt {
         if end_anchor {
             a = &a[..a.len() - 1];
         }
-        let mut lookahead = None;
-        if let Some(&(s, e)) = top_atoms(a).last() {
+        let mut lookahead = Vec::new();
+        while let Some(&(s, e)) = top_atoms(a).last() {
             let g = &a[s..e];
-            if g.starts_with("(?=") || g.starts_with("(?!") {
-                lookahead = Some((g.starts_with("(?="), g[3..g.len() - 1].to_string()));
-                a = &a[..s];
+            if !(g.starts_with("(?=") || g.starts_with("(?!")) {
+                break;
             }
+            lookahead.insert(0, (g.starts_with("(?="), g[3..g.len() - 1].to_string()));
+            a = &a[..s];
         }
         Self { start_anchor, end_anchor, lookbehind, lookahead, core: a.to_string() }
     }
 
     pub fn is_plain(&self) -> bool {
-        self.lookbehind.is_none() && self.lookahead.is_none()
+        self.lookbehind.is_none() && self.lookahead.is_empty()
     }
 
     /// Core alternatives in priority order: a core that is one `(?:a|b|..)` group is expanded so
     /// the caller can emulate Python backtracking from one branch into the next on lookahead failure.
     pub fn core_options(&self) -> Vec<String> {
         let atoms = top_atoms(&self.core);
-        if atoms.len() == 1 && self.core.starts_with("(?:") {
-            return split_top(&self.core[3..self.core.len() - 1]).into_iter().map(String::from).collect();
+        let body = if self.core.starts_with("(?:") { 3 } else { 1 };
+        // Capturing `(a|b)` (ca) backtracks like `(?:a|b)`; captures don't affect the match.
+        if atoms.len() == 1 && (body == 3 || !self.core.starts_with("(?")) && self.core.starts_with('(') {
+            return split_top(&self.core[body..self.core.len() - 1]).into_iter().map(String::from).collect();
         }
         vec![self.core.clone()]
     }

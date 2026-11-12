@@ -16,10 +16,15 @@ use datatrove_core::filters::{FilterResult, Verdict, ZeroDivision};
 use datatrove_core::pyunicode::py;
 use datatrove_core::simplify::{NormConfig, Simplifier};
 use datatrove_core::words::Words;
-use pyo3::exceptions::PyZeroDivisionError;
+use pyo3::exceptions::{PyValueError, PyZeroDivisionError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::IntoPyObjectExt;
+
+/// Tokenizer for spaCy code `language`; ValueError when no Rust rules are embedded for it.
+pub(crate) fn words(language: &str) -> PyResult<Words> {
+    Words::new(language).map_err(PyValueError::new_err)
+}
 
 /// `True`, `(False, reason)`, or `ZeroDivisionError` — what datatrove's `filter()` would produce.
 fn to_py(py: Python<'_>, r: FilterResult) -> PyResult<Py<PyAny>> {
@@ -48,19 +53,23 @@ impl PyGopherQuality {
         max_non_alpha_words_ratio: Option<f64>,
         min_stop_words: Option<f64>,
         stop_words: Vec<String>,
-    ) -> Self {
-        Self(GopherQuality::new(GopherQualityConfig {
-            min_doc_words,
-            max_doc_words,
-            min_avg_word_length,
-            max_avg_word_length,
-            max_symbol_word_ratio,
-            max_bullet_lines_ratio,
-            max_ellipsis_lines_ratio,
-            max_non_alpha_words_ratio,
-            min_stop_words,
-            stop_words,
-        }))
+        language: &str,
+    ) -> PyResult<Self> {
+        Ok(Self(GopherQuality::new(
+            GopherQualityConfig {
+                min_doc_words,
+                max_doc_words,
+                min_avg_word_length,
+                max_avg_word_length,
+                max_symbol_word_ratio,
+                max_bullet_lines_ratio,
+                max_ellipsis_lines_ratio,
+                max_non_alpha_words_ratio,
+                min_stop_words,
+                stop_words,
+            },
+            words(language)?,
+        )))
     }
 
     fn filter(&mut self, py: Python<'_>, text: &str) -> PyResult<Py<PyAny>> {
@@ -81,15 +90,19 @@ impl PyGopherRepetition {
         dup_para_char_frac: Option<f64>,
         top_n_grams: Vec<(usize, f64)>,
         dup_n_grams: Vec<(usize, f64)>,
-    ) -> Self {
-        Self(GopherRepetition::new(GopherRepetitionConfig {
-            dup_line_frac,
-            dup_para_frac,
-            dup_line_char_frac,
-            dup_para_char_frac,
-            top_n_grams,
-            dup_n_grams,
-        }))
+        language: &str,
+    ) -> PyResult<Self> {
+        Ok(Self(GopherRepetition::new(
+            GopherRepetitionConfig {
+                dup_line_frac,
+                dup_para_frac,
+                dup_line_char_frac,
+                dup_para_char_frac,
+                top_n_grams,
+                dup_n_grams,
+            },
+            words(language)?,
+        )))
     }
 
     fn filter(&mut self, py: Python<'_>, text: &str) -> PyResult<Py<PyAny>> {
@@ -103,6 +116,7 @@ struct PyFineWebQuality(FineWeb);
 #[pymethods]
 impl PyFineWebQuality {
     #[new]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         line_punct_thr: f64,
         line_punct_exclude_zero: bool,
@@ -111,16 +125,20 @@ impl PyFineWebQuality {
         short_line_length: i64,
         char_duplicates_ratio: f64,
         new_line_ratio: f64,
-    ) -> Self {
-        Self(FineWeb::new(FineWebConfig {
-            line_punct_thr,
-            line_punct_exclude_zero,
-            stop_chars,
-            short_line_thr,
-            short_line_length,
-            char_duplicates_ratio,
-            new_line_ratio,
-        }))
+        language: &str,
+    ) -> PyResult<Self> {
+        Ok(Self(FineWeb::new(
+            FineWebConfig {
+                line_punct_thr,
+                line_punct_exclude_zero,
+                stop_chars,
+                short_line_thr,
+                short_line_length,
+                char_duplicates_ratio,
+                new_line_ratio,
+            },
+            words(language)?,
+        )))
     }
 
     fn filter(&mut self, py: Python<'_>, text: &str) -> PyResult<Py<PyAny>> {
@@ -146,19 +164,23 @@ impl PyC4Quality {
         filter_javascript: bool,
         filter_curly_bracket: bool,
         filter_policy: bool,
-    ) -> Self {
-        Self(C4::new(C4Config {
-            split_paragraph,
-            remove_citations,
-            filter_no_terminal_punct,
-            min_num_sentences,
-            min_words_per_line,
-            max_word_length,
-            filter_lorem_ipsum,
-            filter_javascript,
-            filter_curly_bracket,
-            filter_policy,
-        }))
+        language: &str,
+    ) -> PyResult<Self> {
+        Ok(Self(C4::new(
+            C4Config {
+                split_paragraph,
+                remove_citations,
+                filter_no_terminal_punct,
+                min_num_sentences,
+                min_words_per_line,
+                max_word_length,
+                filter_lorem_ipsum,
+                filter_javascript,
+                filter_curly_bracket,
+                filter_policy,
+            },
+            words(language)?,
+        )))
     }
 
     /// `(result, new_text | None, line_outcomes)`; outcome bytes index `LINE_STATS` in `filters.py`.
@@ -212,18 +234,26 @@ fn simplify_text(text: &str, norm: (bool, bool, bool, bool, bool, bool, bool)) -
     Simplifier::new(norm_config(norm)).simplify(text).to_owned()
 }
 
-/// `split_into_words(text, "eng")`.
+/// `split_into_words(text, lang)` for a language datatrove tokenizes with `SpaCyTokenizer(language)`.
 #[pyfunction]
-fn split_into_words(text: &str) -> Vec<String> {
+#[pyo3(signature = (text, language = "en"))]
+fn split_into_words(text: &str, language: &str) -> PyResult<Vec<String>> {
     let mut out = Vec::new();
-    Words::default().words(text, &mut out);
-    out.into_iter().map(str::to_owned).collect()
+    words(language)?.words(text, &mut out);
+    Ok(out.into_iter().map(str::to_owned).collect())
 }
 
-/// `split_into_sentences(text, "eng")`.
+/// `split_into_sentences(text, lang)`, as `split_into_words`.
 #[pyfunction]
-fn split_into_sentences(text: &str) -> Vec<String> {
-    Words::default().sentences(text).into_iter().map(str::to_owned).collect()
+#[pyo3(signature = (text, language = "en"))]
+fn split_into_sentences(text: &str, language: &str) -> PyResult<Vec<String>> {
+    Ok(words(language)?.sentences(text).into_iter().map(str::to_owned).collect())
+}
+
+/// spaCy language codes with an embedded Rust tokenizer.
+#[pyfunction]
+fn spacy_languages() -> Vec<&'static str> {
+    datatrove_core::words::languages().collect()
 }
 
 /// (python_version, unidata_version) the embedded Unicode tables were exported from.
@@ -250,5 +280,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(simplify_text, m)?)?;
     m.add_function(wrap_pyfunction!(split_into_words, m)?)?;
     m.add_function(wrap_pyfunction!(split_into_sentences, m)?)?;
+    m.add_function(wrap_pyfunction!(spacy_languages, m)?)?;
     Ok(())
 }

@@ -15,17 +15,27 @@ def spacy_installed() -> bool:
     return importlib.util.find_spec("spacy") is not None
 
 
+@lru_cache(maxsize=1)
+def rust_languages() -> frozenset[str]:
+    """spaCy codes whose tokenizer rules are embedded in Rust (each one checked against spaCy, see docs/parity.md)."""
+    return frozenset(_core.spacy_languages())
+
+
 @lru_cache(maxsize=None)
-def uses_spacy_english(language) -> bool:
-    """True when datatrove would tokenize `language` with plain `spacy.blank("en")`, the only tokenizer ported.
+def rust_language(language) -> str | None:
+    """The spaCy code when datatrove would tokenize `language` with a plain `spacy.blank(code)` that Rust covers.
 
     Decided from datatrove's factory table without instantiating the tokenizer, which would require spaCy to be
     installed even though the Rust path never uses it.
     """
     if isinstance(language, WordTokenizer):
-        return type(language) is SpaCyTokenizer and language.language == "en" and language.config is None
-    factory = load_tokenizer_assignments().get(language)
-    return isinstance(factory, partial) and factory.args == ("SpaCyTokenizer", "en") and not factory.keywords
+        plain = type(language) is SpaCyTokenizer and language.config is None
+        code = language.language if plain else None
+    else:
+        factory = load_tokenizer_assignments().get(language)
+        plain = isinstance(factory, partial) and factory.args[0] == "SpaCyTokenizer" and not factory.keywords
+        code = factory.args[1] if plain else None
+    return code if code in rust_languages() else None
 
 
 def check_unicode_tables():
@@ -53,13 +63,15 @@ class DropsRustOnPickle:
 class RustBacked(DropsRustOnPickle):
     """Mixin: builds the Rust implementation lazily and falls back to datatrove's Python code for other languages."""
 
-    def _build_rust(self):
+    def _build_rust(self, language: str):
+        """The Rust implementation for spaCy code `language`."""
         raise NotImplementedError
 
     def rust(self):
         """The Rust implementation, or None when this step must run datatrove's Python code."""
         if self._rust is None:
-            self._rust = self._build_rust() if uses_spacy_english(self.language) else _NOT_APPLICABLE
+            code = rust_language(self.language)
+            self._rust = self._build_rust(code) if code else _NOT_APPLICABLE
         return self._rust or None
 
     def rust_for(self, text: str):

@@ -35,7 +35,7 @@ class _RustFilter(RustBacked, FastRun):
 
 
 class GopherQualityFilter(_RustFilter, dt.GopherQualityFilter):
-    def _build_rust(self):
+    def _build_rust(self, language):
         return _core.GopherQuality(
             self.min_doc_words,
             self.max_doc_words,
@@ -47,11 +47,12 @@ class GopherQualityFilter(_RustFilter, dt.GopherQualityFilter):
             self.max_non_alpha_words_ratio,
             self.min_stop_words,
             list(self.stop_words),
+            language,
         )
 
 
 class GopherRepetitionFilter(_RustFilter, dt.GopherRepetitionFilter):
-    def _build_rust(self):
+    def _build_rust(self, language):
         return _core.GopherRepetition(
             self.dup_line_frac,
             self.dup_para_frac,
@@ -59,11 +60,12 @@ class GopherRepetitionFilter(_RustFilter, dt.GopherRepetitionFilter):
             self.dup_para_char_frac,
             list(self.top_n_grams),
             list(self.dup_n_grams),
+            language,
         )
 
 
 class FineWebQualityFilter(_RustFilter, dt.FineWebQualityFilter):
-    def _build_rust(self):
+    def _build_rust(self, language):
         return _core.FineWebQuality(
             self.line_punct_thr,
             self.line_punct_exclude_zero,
@@ -72,11 +74,12 @@ class FineWebQualityFilter(_RustFilter, dt.FineWebQualityFilter):
             self.short_line_length,
             self.char_duplicates_ratio,
             self.new_line_ratio,
+            language,
         )
 
 
 class C4QualityFilter(_RustFilter, dt.C4QualityFilter):
-    def _build_rust(self):
+    def _build_rust(self, language):
         return _core.C4Quality(
             self.split_paragraph,
             self.remove_citations,
@@ -88,6 +91,7 @@ class C4QualityFilter(_RustFilter, dt.C4QualityFilter):
             self.filter_javascript,
             self.filter_curly_bracket,
             self.filter_policy,
+            language,
         )
 
     def _rust_filter(self, rs, doc, counters=None):

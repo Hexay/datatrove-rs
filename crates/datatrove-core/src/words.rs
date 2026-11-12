@@ -1,9 +1,11 @@
-//! datatrove's `SpaCyTokenizer` for English: `spacy.blank("en")` + the `sentencizer` pipe.
+//! datatrove's `SpaCyTokenizer(lang)`: `spacy.blank(lang)` + the `sentencizer` pipe, for every language with
+//! embedded rules (`spacy_tokenizer_rs::languages`).
 
 use crate::pystr::{char_len, strip};
 use crate::pyunicode::py;
+pub use spacy_tokenizer_rs::languages;
 use spacy_tokenizer_rs::specials::Span;
-use spacy_tokenizer_rs::{english, Backend, State, Tokenizer};
+use spacy_tokenizer_rs::{tokenizer, Backend, State, Tokenizer};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
@@ -11,20 +13,29 @@ use std::sync::OnceLock;
 /// `profile --stream-cache` for the size trade-off.
 const CHUNK_CACHE: usize = 100_000;
 
+type LastDoc = Option<(usize, Box<str>, Vec<Span>)>;
+
 thread_local! {
-    /// One tokenizer state per thread, so every filter shares the chunk cache: FineWeb re-tokenizing C4's
-    /// rewritten text then hits the chunks C4 just tokenized.
-    static STATE: RefCell<State> = RefCell::new(State::new(CHUNK_CACHE));
-    static LAST_DOC: RefCell<Option<(Box<str>, Vec<Span>)>> = const { RefCell::new(None) };
+    /// One tokenizer state per thread and language, so every filter shares the chunk cache: FineWeb
+    /// re-tokenizing C4's rewritten text then hits the chunks C4 just tokenized.
+    static STATES: RefCell<Vec<Option<State>>> = const { RefCell::new(Vec::new()) };
+    static LAST_DOC: RefCell<LastDoc> = const { RefCell::new(None) };
 }
 
-fn shared_tokenizer() -> &'static Tokenizer {
-    static T: OnceLock<Tokenizer> = OnceLock::new();
-    T.get_or_init(|| english(Backend::Split))
+type Slot = (&'static str, OnceLock<Result<Tokenizer, String>>);
+
+/// (index, tokenizer) for `lang`, compiled on first use and shared by all threads.
+fn shared_tokenizer(lang: &str) -> Result<(usize, &'static Tokenizer), String> {
+    static SLOTS: OnceLock<Vec<Slot>> = OnceLock::new();
+    let slots = SLOTS.get_or_init(|| languages().map(|l| (l, OnceLock::new())).collect());
+    let id = slots.iter().position(|(l, _)| *l == lang).ok_or_else(|| format!("no Rust tokenizer for {lang:?}"))?;
+    let tok = slots[id].1.get_or_init(|| tokenizer(lang, Backend::Split).expect("listed language"));
+    tok.as_ref().map(|t| (id, t)).map_err(|e| format!("{lang} rules: {e}"))
 }
 
 /// Per-caller token buffers; tokenizer state is per thread.
 pub struct Words {
+    id: usize,
     tok: &'static Tokenizer,
     tokens: Vec<Span>,
     starts: Vec<usize>,
@@ -32,11 +43,17 @@ pub struct Words {
 
 impl Default for Words {
     fn default() -> Self {
-        Self { tok: shared_tokenizer(), tokens: Vec::new(), starts: Vec::new() }
+        Self::new("en").expect("embedded English rules")
     }
 }
 
 impl Words {
+    /// Words for spaCy language code `lang`; Err when no rules are embedded for it.
+    pub fn new(lang: &str) -> Result<Self, String> {
+        let (id, tok) = shared_tokenizer(lang)?;
+        Ok(Self { id, tok, tokens: Vec::new(), starts: Vec::new() })
+    }
+
     /// `split_into_words(text)`: token texts, stripped, empties dropped.
     pub fn words<'a>(&mut self, text: &'a str, out: &mut Vec<&'a str>) {
         out.clear();
@@ -73,7 +90,11 @@ impl Words {
 
     /// Tokenizes `text` into `self.tokens` with the thread's shared state (buffers are swapped, not copied).
     fn tokenize(&mut self, text: &str) {
-        STATE.with_borrow_mut(|st| {
+        STATES.with_borrow_mut(|states| {
+            if states.len() <= self.id {
+                states.resize_with(self.id + 1, || None);
+            }
+            let st = states[self.id].get_or_insert_with(|| State::new(CHUNK_CACHE));
             std::mem::swap(&mut st.tokens, &mut self.tokens);
             self.tok.tokenize(text, st);
             std::mem::swap(&mut st.tokens, &mut self.tokens);
@@ -84,7 +105,7 @@ impl Words {
     /// doc (datatrove chains them per doc) tokenize it once, as datatrove's `lru_cache` on `split_into_parts` does.
     fn tokenize_shared(&mut self, text: &str) {
         let hit = LAST_DOC.with_borrow(|last| match last {
-            Some((t, spans)) if **t == *text => {
+            Some((id, t, spans)) if *id == self.id && **t == *text => {
                 self.tokens.clone_from(spans);
                 true
             }
@@ -92,7 +113,7 @@ impl Words {
         });
         if !hit {
             self.tokenize(text);
-            LAST_DOC.set(Some((text.into(), self.tokens.clone())));
+            LAST_DOC.set(Some((self.id, text.into(), self.tokens.clone())));
         }
     }
 

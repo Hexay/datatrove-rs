@@ -11,7 +11,7 @@ pub fn chunks(text: &str, max_chunk_size: usize) -> Vec<(usize, usize)> {
     let n = offs.len() - 1;
     let max = max_chunk_size as f64;
     let factor = n as f64 / text.len() as f64;
-    let increase_by = (max * 0.1).min(10.0).max(1.0) as usize;
+    let increase_by = (max * 0.1).clamp(1.0, 10.0) as usize;
     let mut guess = (max * factor - 10.0).max(1.0) as usize;
     let step_down = (max * 0.001).min(10.0) as usize;
     let mut out = Vec::new();

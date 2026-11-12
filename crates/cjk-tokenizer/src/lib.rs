@@ -2,8 +2,8 @@
 //! their spaCy `Doc`s: token byte spans, including the whitespace tokens spaCy keeps.
 
 pub mod align;
-pub mod jieba;
 pub mod japanese;
+pub mod jieba;
 
 /// (start, end) byte offsets of a token.
 pub type Span = (u32, u32);

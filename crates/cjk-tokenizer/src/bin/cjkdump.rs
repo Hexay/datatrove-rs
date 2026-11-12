@@ -3,8 +3,8 @@
 //! Per doc: u32 ntok (u32::MAX where datatrove raises), then (u32 idx, u32 len) in chars, the format of
 //! `tools/cjk_ref.py dump` and spacy-tokenizer's `compare.py`.
 
-use cjk_tokenizer_rs::jieba::{Hmm, Jieba};
 use cjk_tokenizer_rs::japanese::Sudachi;
+use cjk_tokenizer_rs::jieba::{Hmm, Jieba};
 use cjk_tokenizer_rs::Span;
 use std::io::Write;
 use std::path::Path;

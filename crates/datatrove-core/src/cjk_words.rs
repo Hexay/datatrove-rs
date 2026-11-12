@@ -63,9 +63,8 @@ impl Cjk {
                 ZH_WORDS.with_borrow_mut(|w| j.tokenize(text, 0, w, tokens));
                 true
             }
-            Cjk::Ja(s) => JA_STATE.with_borrow_mut(|st| {
-                s.tokenize(text, st.get_or_insert_with(|| s.state()), tokens, docs).is_ok()
-            }),
+            Cjk::Ja(s) => JA_STATE
+                .with_borrow_mut(|st| s.tokenize(text, st.get_or_insert_with(|| s.state()), tokens, docs).is_ok()),
         };
         if !ok {
             tokens.clear();

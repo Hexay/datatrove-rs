@@ -62,20 +62,23 @@ def test_steps(code):
 
 
 def test_language_variants():
-    for key in ("zh", "zh_Hani", "cmn", "cmn_Hani", "yue_Hani", "wuu_Hani", "hak_Hani", "nan_Hani", "zho_Hani"):
+    for key in ("zh_Hani", "cmn", "cmn_Hani", "yue", "yue_Hani", "wuu_Hani", "hak_Hani", "nan_Hani", "zho_Hani"):
         assert _base.rust_language(key) == ("zh" if cjk.load("zh") else None), key
-    for key in ("ja", "jpn", "jpn_Jpan"):
+    for key in ("ja", "ja_Jpan", "jpn", "jpn_Jpan"):
         assert _base.rust_language(key) == ("ja" if cjk.load("ja") else None), key
-    # Literary Chinese is Stanza, Latin-script Chinese the whitespace tokenizer, Latin-script Hakka spaCy "xx".
-    assert _base.rust_language("lzh_Hani") is None
-    assert _base.rust_language("zho_Latn") is None
+    # datatrove's table maps bare "zh" to spaCy "xx" and "zho" to the whitespace tokenizer; Literary Chinese is Stanza.
+    assert _base.rust_language("zh") == "xx"
     assert _base.rust_language("hak_Latn") == "xx"
+    assert _base.rust_language("zho") is None
+    assert _base.rust_language("zho_Latn") is None
+    assert _base.rust_language("lzh_Hani") is None
 
 
 def test_tokenizer_instances():
     if cjk.load("ja"):
         assert _base.rust_language(SpaCyTokenizer("ja")) == "ja"
-    custom = SpaCyTokenizer("ja", config={"nlp": {"tokenizer": {"split_mode": "C"}}})
+    custom = SpaCyTokenizer("ja")
+    custom.config = {"nlp": {"tokenizer": {"split_mode": "C"}}}  # __init__ ignores a passed config for ja
     assert _base.rust_language(custom) is None
 
 

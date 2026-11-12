@@ -19,9 +19,9 @@ pub fn same_non_space<'a>(text: &str, words: impl IntoIterator<Item = &'a str>) 
 /// before it, and the trailing rest; a single ' ' after a word is that token's trailing space.
 /// `space_after(i)` decides whether word `i`'s trailing space is taken (spaCy checks the text, datatrove's
 /// Japanese tokenizer checks the next word). Err when a word is not found, where spaCy raises E194.
-pub fn align<'a>(
+pub fn align(
     text: &str,
-    words: &[&'a str],
+    words: &[&str],
     base: u32,
     space_after: impl Fn(usize, &str, usize) -> bool,
     out: &mut Vec<Span>,

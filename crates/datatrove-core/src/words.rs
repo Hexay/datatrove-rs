@@ -60,7 +60,9 @@ impl Words {
     /// Words for spaCy language code `lang`; Err when no Rust tokenizer is available for it.
     pub fn new(lang: &str) -> Result<Self, String> {
         let (id, engine) = match Cjk::new(lang) {
-            Some(cjk) => (usize::MAX - cjk_words::LANGUAGES.iter().position(|&l| l == lang).unwrap(), Engine::Cjk(cjk?)),
+            Some(cjk) => {
+                (usize::MAX - cjk_words::LANGUAGES.iter().position(|&l| l == lang).unwrap(), Engine::Cjk(cjk?))
+            }
             None => {
                 let (id, tok) = shared_tokenizer(lang)?;
                 (id, Engine::Spacy(tok))

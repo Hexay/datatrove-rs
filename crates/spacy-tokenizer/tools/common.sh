@@ -9,6 +9,14 @@ OUT=${SPACY_PARITY_OUT:-${XDG_CACHE_HOME:-$HOME/.cache}/datatrove-rs/out/$(basen
 mkdir -p "$OUT"
 export PYTHONIOENCODING=utf-8
 SPACY_VERSION=$("$PY" -c 'from importlib.metadata import version; print(version("spacy"))')
+. "$REPO/tools/slot.sh"
+
+# in_slot <script> args...: after build_bins, rerun the calling script as one job in a light.lock slot.
+in_slot() {
+  [ -n "${LIGHT_SLOT_HELD:-}" ] || [ ! -d "$LIGHT_LOCK_DIR" ] && return 0
+  in_light_slot bash "$@"
+  exit
+}
 
 # build_bins: once per top-level run; sets BIN, the bins' directory.
 build_bins() {

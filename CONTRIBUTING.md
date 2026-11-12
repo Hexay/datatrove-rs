@@ -45,6 +45,10 @@ datatrove and spaCy versions. The tokenizer scripts cache spaCy's dumps next to 
 `.spacy-version` stamp (redone when spaCy changes), and write the Rust dumps to `$SPACY_PARITY_OUT` (default
 `~/.cache/datatrove-rs/out/<worktree dir>`), so parallel worktrees don't overwrite each other's.
 
+On the shared box, `tools/dev.sh test|parity|bench` and each `lang_parity.sh`/`parity.sh` run take one of the two
+light.lock slots in `$LIGHT_LOCK_DIR` (`tools/slot.sh`) for that run only. Never wrap a loop of runs, or these
+scripts, in `flock`: a slot held across a loop blocks every other worktree for its whole length.
+
 After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/export_rules.py tables` and
 `export_rules.py <lang>...`, then rerun `lang_parity.sh` for each language.
 

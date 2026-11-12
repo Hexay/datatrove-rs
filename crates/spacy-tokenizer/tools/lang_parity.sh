@@ -3,7 +3,8 @@
 #   affix level: prefix/suffix/infix/url_match/token_match on the docs' chunks, rule keys and random strings;
 #   token level: spans on the real docs and on fuzz docs built from the language's rules and words.
 # Reference dumps are cached next to docs.bin and redone when spaCy's version changes; Rust dumps go to $OUT
-# (common.sh). Builds the bins once with PROFILE (default iter).
+# (common.sh). Builds the bins once with PROFILE (default iter), then runs as one job in a light.lock slot: loop
+# over languages in your shell without wrapping the loop in flock.
 set -uo pipefail
 . "$(dirname "$0")/common.sh"
 SPEC=$1
@@ -13,6 +14,7 @@ LANG_CODE=$SPEC
 [[ $SPEC == *.json ]] && LANG_CODE=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["lang"])' "$SPEC")
 export PYTHONWARNINGS=ignore
 build_bins || exit 2
+in_slot "$0" "$@"
 fail=0
 
 STR=$DOCS.strings-$LANG_CODE

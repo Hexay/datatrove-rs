@@ -3,6 +3,7 @@
 #   build   maturin develop with cargo profile PROFILE (default iter: fast rebuilds; release for benches and wheels)
 #   parity  tools/parity.py, datatrove side cached in DATATROVE_RS_PARITY_CACHE
 #   bench   installs a release build first
+# test, parity and bench each take a light.lock slot for themselves (tools/slot.sh): don't wrap them in flock.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 export PATH="$HOME/.cargo/bin:$PATH" PYTHONIOENCODING=utf-8 PYTHONUNBUFFERED=1 VIRTUAL_ENV="$ROOT/.venv"
@@ -19,10 +20,11 @@ build() {
   [ "$profile" = iter ] && unset CARGO_INCREMENTAL
   (cd "$ROOT" && "$PY" -m maturin develop --profile "$profile" -q "$@")
 }
+. "$ROOT/tools/slot.sh"
 case $cmd in
   build) build "$@" ;;
-  test) "$PY" -m pytest -q "$ROOT/tests" "$@" ;;
-  parity) "$PY" "$ROOT/tools/parity.py" "$@" ;;
-  bench) PROFILE=release build && "$PY" "$ROOT/tools/bench.py" "$@" ;;
+  test) in_light_slot "$PY" -m pytest -q "$ROOT/tests" "$@" ;;
+  parity) in_light_slot "$PY" "$ROOT/tools/parity.py" "$@" ;;
+  bench) PROFILE=release build && in_light_slot "$PY" "$ROOT/tools/bench.py" "$@" ;;
   *) echo "unknown command: $cmd" >&2; exit 2 ;;
 esac

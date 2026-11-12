@@ -9,6 +9,7 @@ SPEC=${4:-en}
 LANG_CODE=$SPEC
 [[ $SPEC == *.json ]] && LANG_CODE=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["lang"])' "$SPEC")
 build_bins
+in_slot "$0" "$@"
 REF=$DOCS.spacy-$LANG_CODE
 RUST=$OUT/$(basename "$DOCS").rust-$LANG_CODE
 cached "$REF" "$PY" "$ROOT/tools/spacy_ref.py" dump "$DOCS" {} 0 "$LANG_CODE"

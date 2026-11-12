@@ -40,7 +40,10 @@ class MinhashDedupSignature(RustBacked, dt.MinhashDedupSignature):
         rs = self.rust_for(text)
         if not rs:
             return super().get_shingles(text)
-        return np.frombuffer(rs.shingles(text), dtype="<u8").reshape((-1, 1))
+        try:
+            return np.frombuffer(rs.shingles(text), dtype="<u8").reshape((-1, 1))
+        except _core.TokenizerFallback:
+            return super().get_shingles(text)
 
     def get_signature(self, shingles: np.ndarray) -> list[list[int]]:
         rs = self.rust()

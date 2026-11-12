@@ -20,7 +20,12 @@ class _RustFilter(RustBacked, FastRun):
 
     def filter(self, doc):
         rs = self.rust_for(doc.text)
-        return self._rust_filter(rs, doc) if rs else super().filter(doc)
+        if rs:
+            try:
+                return self._rust_filter(rs, doc)
+            except _core.TokenizerFallback:
+                pass
+        return super().filter(doc)
 
     def _rust_filter(self, rs, doc, counters=None):
         return rs.filter(doc.text)
@@ -29,7 +34,12 @@ class _RustFilter(RustBacked, FastRun):
         rust_filter, py_filter = self._rust_filter, self.filter
 
         def filter_doc(doc):
-            return py_filter(doc) if "IS_ALPHA" in doc.text else rust_filter(rs, doc, counters)
+            if "IS_ALPHA" in doc.text:
+                return py_filter(doc)
+            try:
+                return rust_filter(rs, doc, counters)
+            except _core.TokenizerFallback:
+                return py_filter(doc)
 
         return filter_doc
 

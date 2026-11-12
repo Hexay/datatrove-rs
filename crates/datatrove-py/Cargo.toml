@@ -11,4 +11,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 datatrove-core = { path = "../datatrove-core" }
+cjk-tokenizer-rs = { path = "../cjk-tokenizer" }
 pyo3 = { version = "0.29", features = ["extension-module", "abi3-py310"] }

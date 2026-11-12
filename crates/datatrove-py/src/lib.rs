@@ -1,6 +1,7 @@
 //! PyO3 bindings; `python/datatrove_rs` wraps these in datatrove `PipelineStep` subclasses.
 
 mod badwords;
+mod cjk;
 mod cluster;
 mod ftfy_check;
 mod minhash;
@@ -28,6 +29,7 @@ pub(crate) fn words(language: &str) -> PyResult<Words> {
 
 /// `True`, `(False, reason)`, or `ZeroDivisionError` — what datatrove's `filter()` would produce.
 fn to_py(py: Python<'_>, r: FilterResult) -> PyResult<Py<PyAny>> {
+    cjk::check()?;
     match r {
         Err(ZeroDivision) => Err(PyZeroDivisionError::new_err("division by zero")),
         Ok(Verdict::Keep) => true.into_py_any(py),
@@ -240,6 +242,7 @@ fn simplify_text(text: &str, norm: (bool, bool, bool, bool, bool, bool, bool)) -
 fn split_into_words(text: &str, language: &str) -> PyResult<Vec<String>> {
     let mut out = Vec::new();
     words(language)?.words(text, &mut out);
+    cjk::check()?;
     Ok(out.into_iter().map(str::to_owned).collect())
 }
 
@@ -247,7 +250,9 @@ fn split_into_words(text: &str, language: &str) -> PyResult<Vec<String>> {
 #[pyfunction]
 #[pyo3(signature = (text, language = "en"))]
 fn split_into_sentences(text: &str, language: &str) -> PyResult<Vec<String>> {
-    Ok(words(language)?.sentences(text).into_iter().map(str::to_owned).collect())
+    let out = words(language)?.sentences(text).into_iter().map(str::to_owned).collect();
+    cjk::check()?;
+    Ok(out)
 }
 
 /// spaCy language codes with an embedded Rust tokenizer.
@@ -281,5 +286,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_into_words, m)?)?;
     m.add_function(wrap_pyfunction!(split_into_sentences, m)?)?;
     m.add_function(wrap_pyfunction!(spacy_languages, m)?)?;
+    m.add_function(wrap_pyfunction!(cjk::load_jieba, m)?)?;
+    m.add_function(wrap_pyfunction!(cjk::load_sudachi, m)?)?;
+    m.add_function(wrap_pyfunction!(cjk::sudachi_version, m)?)?;
+    m.add("TokenizerFallback", m.py().get_type::<cjk::TokenizerFallback>())?;
     Ok(())
 }

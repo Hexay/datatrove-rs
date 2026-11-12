@@ -76,7 +76,8 @@ def main():
     ap.add_argument("--random-configs", type=int, default=0, help="random threshold configs per filter")
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--run-limit", type=int, default=None, help="docs fed to the sequential run()/stats pass")
-    ap.add_argument("--cache", default=None, help="directory caching datatrove-side results")
+    ap.add_argument("--cache", default=os.environ.get("DATATROVE_RS_PARITY_CACHE"),
+                    help="directory caching datatrove-side results (default: $DATATROVE_RS_PARITY_CACHE)")
     ap.add_argument("--out", default="parity_mismatches.txt")
     ap.add_argument("--language", default=None, help="datatrove language passed to every step (default: theirs)")
     args = ap.parse_args()

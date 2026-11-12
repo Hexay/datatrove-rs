@@ -133,6 +133,7 @@ def cached(cache_dir, key_parts, compute):
             return pickle.load(f)
     result = compute()
     os.makedirs(cache_dir, exist_ok=True)
-    with open(path, "wb") as f:
+    with tempfile.NamedTemporaryFile("wb", dir=cache_dir, delete=False) as f:  # concurrent runs share the cache
         pickle.dump(result, f)
+    os.replace(f.name, path)
     return result

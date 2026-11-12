@@ -13,6 +13,7 @@ __all__ = [
     "FineWebQualityFilter",
     "GopherQualityFilter",
     "GopherRepetitionFilter",
+    "MinhashDedupCluster",
     "MinhashDedupSignature",
     "is_patched",
     "patch",
@@ -22,8 +23,8 @@ __all__ = [
 
 def __getattr__(name):
     # datatrove.pipeline.dedup imports `tokenizers`, which filter-only installs may not have.
-    if name == "MinhashDedupSignature":
-        from datatrove_rs.minhash import MinhashDedupSignature
+    if name in ("MinhashDedupSignature", "MinhashDedupCluster"):
+        from datatrove_rs import minhash
 
-        return MinhashDedupSignature
+        return getattr(minhash, name)
     raise AttributeError(f"module 'datatrove_rs' has no attribute {name!r}")

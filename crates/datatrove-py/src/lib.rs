@@ -1,6 +1,10 @@
 //! PyO3 bindings; `python/datatrove_rs` wraps these in datatrove `PipelineStep` subclasses.
 
+mod badwords;
+mod cluster;
+mod ftfy_check;
 mod minhash;
+mod pii;
 mod url;
 mod warc;
 
@@ -237,6 +241,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<minhash::PyMinHasher>()?;
     m.add_class::<warc::PyWarcRecords>()?;
     m.add_class::<url::PyUrlLists>()?;
+    m.add_class::<cluster::PyMinhashCluster>()?;
+    m.add_class::<pii::PyPii>()?;
+    m.add_class::<badwords::PyBadWords>()?;
+    m.add_class::<ftfy_check::PyFtfyCheck>()?;
+    m.add_function(wrap_pyfunction!(ftfy_check::re_category_ranges, m)?)?;
     m.add_function(wrap_pyfunction!(unicode_tables_version, m)?)?;
     m.add_function(wrap_pyfunction!(simplify_text, m)?)?;
     m.add_function(wrap_pyfunction!(split_into_words, m)?)?;

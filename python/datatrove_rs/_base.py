@@ -38,13 +38,20 @@ def check_unicode_tables():
         )
 
 
-class RustBacked:
-    """Mixin: builds the Rust implementation lazily and falls back to datatrove's Python code for other languages.
-
-    The Rust object is not picklable, and datatrove pickles steps to ship them to workers, so it is dropped on pickling.
-    """
+class DropsRustOnPickle:
+    """The Rust object in `_rust` is not picklable, and datatrove pickles steps to ship them to workers, so it is
+    dropped on pickling and rebuilt lazily."""
 
     _rust = None
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop("_rust", None)
+        return state
+
+
+class RustBacked(DropsRustOnPickle):
+    """Mixin: builds the Rust implementation lazily and falls back to datatrove's Python code for other languages."""
 
     def _build_rust(self):
         raise NotImplementedError
@@ -64,8 +71,3 @@ class RustBacked:
         installed there is no such state to match (datatrove itself could not run), so Rust handles them too.
         """
         return None if "IS_ALPHA" in text and spacy_installed() else self.rust()
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        state.pop("_rust", None)
-        return state

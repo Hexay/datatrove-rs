@@ -44,6 +44,8 @@ test = [
     # datatrove's WarcReader, URLFilter and LanguageFilter dependencies (+ fsspec HTTP for the lid model download)
     "warcio", "faust-cchardet", "python-magic", "tldextract", "pyahocorasick", "fasteners", "fasttext-numpy2-wheel",
     "requests", "aiohttp",
+    # FTFYFormatter's unchanged-text check is built from ftfy's own regexes
+    "ftfy>=6,<7",
 ]
 # Byte-exact Rust Trafilatura extractor; its own extra pins trafilatura/lxml to the versions it matches.
 trafilatura = ["trafilatura-rs[trafilatura]>=0.1.1,<0.2"]

@@ -1,6 +1,7 @@
 //! Ports of datatrove's heuristic filters. Each returns what `BaseFilter.filter` returns in Python,
 //! evaluating checks in the same order so the first failing reason (and any ZeroDivisionError) matches.
 
+pub mod badwords;
 pub mod c4;
 pub mod fineweb;
 pub mod gopher_quality;

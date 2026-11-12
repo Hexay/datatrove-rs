@@ -40,9 +40,18 @@ def test_patch_covers_reader(patched):
 
 
 def test_patch_covers_minhash(patched):
-    from datatrove.pipeline.dedup import MinhashDedupSignature
+    from datatrove.pipeline.dedup import MinhashDedupCluster, MinhashDedupSignature
 
     assert MinhashDedupSignature is rs.MinhashDedupSignature
+    assert MinhashDedupCluster is rs.MinhashDedupCluster
+
+
+def test_patch_covers_formatters_and_badwords(patched):
+    from datatrove.pipeline.filters import C4BadWordsFilter
+    from datatrove.pipeline.formatters import FTFYFormatter, PIIFormatter
+
+    for cls in (C4BadWordsFilter, FTFYFormatter, PIIFormatter):
+        assert cls.__module__.startswith("datatrove_rs."), cls
 
 
 def test_unpatch_restores_originals():

@@ -1,6 +1,6 @@
 """spaCy reference side.
 
-  spacy_ref.py dump  <docs.bin> <out.bin> [limit]   per doc: u32 ntok, then (u32 idx, u32 len) in chars
+  spacy_ref.py dump  <docs.bin> <out.bin> [limit] [lang]   per doc: u32 ntok, then (u32 idx, u32 len) in chars
   spacy_ref.py export-docs <fw.parquet> <out.bin> <n> [skip]
 """
 
@@ -16,9 +16,9 @@ def load_docs(path, limit=None):
     return docs[:limit] if limit else docs
 
 
-def dump(path, out, limit=None):
+def dump(path, out, limit=None, lang="en"):
     docs = load_docs(path, limit)
-    tok = spacy.blank("en").tokenizer
+    tok = spacy.blank(lang).tokenizer
     bad_text = 0
     with open(out, "wb") as f:
         for text in docs:
@@ -47,6 +47,6 @@ def export_docs(parquet, out, n, skip=0):
 if __name__ == "__main__":
     cmd, *a = sys.argv[1:]
     if cmd == "dump":
-        dump(a[0], a[1], int(a[2]) if len(a) > 2 else None)
+        dump(a[0], a[1], int(a[2]) or None if len(a) > 2 else None, *a[3:4])
     elif cmd == "export-docs":
         export_docs(a[0], a[1], int(a[2]), int(a[3]) if len(a) > 3 else 0)

@@ -64,14 +64,8 @@ fn split_newline_runs(s: &str, min: usize) -> Vec<&str> {
 }
 
 impl GopherRepetition {
-    pub fn new(cfg: GopherRepetitionConfig) -> Self {
-        Self {
-            cfg,
-            words: Words::default(),
-            joined: Default::default(),
-            top: Default::default(),
-            dup: Default::default(),
-        }
+    pub fn new(cfg: GopherRepetitionConfig, words: Words) -> Self {
+        Self { cfg, words, joined: Default::default(), top: Default::default(), dup: Default::default() }
     }
 
     pub fn filter(&mut self, text: &str) -> FilterResult {

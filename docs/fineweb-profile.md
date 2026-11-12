@@ -111,6 +111,24 @@ is 1,500 docs each of de, fr, ru, ar, el, tr, pl and xx (already FTFY/PII-proces
 | FTFYFormatter (datatrove defaults) | 417 | 12.4 (34x) | 577 | 27.5 (21x) |
 | C4BadWordsFilter (en list) | 403 | 31.6 (13x) | 349 | 27.6 (13x) |
 
+## Filters and MinHash in other languages (2026-11-12)
+
+`tools/bench.py <lang>.parquet 500 3 <lang>` on 500 FineWeb-2 docs per language (the subsets datatrove maps to that
+spaCy language), single thread, speedup vs datatrove; the machine was shared, so treat single cells as ±20%.
+
+| Lang | GopherRep | GopherQual | C4 | FineWeb | Chain (4 filters, `run()`) | MinHash 1 |
+|---|---:|---:|---:|---:|---:|---:|
+| de | 74x | 84x | 30x | 91x | 53x | 45x |
+| fr | 96x | 103x | 79x | 125x | 78x | 59x |
+| es | 116x | 82x | 77x | 54x | 71x | 45x |
+| ru | 77x | 43x | 42x | 77x | 61x | 29x |
+| it | 72x | 64x | 40x | 27x | 54x | 51x |
+| pt | 117x | 80x | 70x | 106x | 70x | 40x |
+| pl | 82x | 57x | 67x | 72x | 56x | 35x |
+| nl | 89x | 49x | 48x | 64x | 62x | 46x |
+| tr | 137x | 106x | 55x | 113x | 88x | 37x |
+| id | 121x | 124x | 122x | 153x | 71x | 95x |
+
 ## Inside Trafilatura (`favor_precision=True`, fallbacks on, datatrove defaults)
 
 | Phase (inclusive) | share |

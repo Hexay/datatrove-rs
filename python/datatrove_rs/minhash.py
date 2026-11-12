@@ -13,7 +13,7 @@ _READ_CHUNK = 1 << 24
 class MinhashDedupSignature(RustBacked, dt.MinhashDedupSignature):
     """Stage 1 only; the signature files it writes are consumed unchanged by datatrove's stages 2-4."""
 
-    def _build_rust(self):
+    def _build_rust(self, language):
         a, b = self.parameters
         n = self.config.norm_config
         h = self.config.hash_config
@@ -27,7 +27,13 @@ class MinhashDedupSignature(RustBacked, dt.MinhashDedupSignature):
             n.norm_monthnames,
         )
         return _core.MinHasher(
-            self.config.n_grams, norm, h.hash_fc, h.precision, a.astype("<u8").tobytes(), b.astype("<u8").tobytes()
+            self.config.n_grams,
+            norm,
+            h.hash_fc,
+            h.precision,
+            a.astype("<u8").tobytes(),
+            b.astype("<u8").tobytes(),
+            language,
         )
 
     def get_shingles(self, text: str) -> np.ndarray:

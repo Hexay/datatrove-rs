@@ -1,9 +1,10 @@
 use serde::Deserialize;
 
-/// Output of `tools/export_rules.py`.
+/// One language's rules (`tools/export_rules.py <lang>`).
 #[derive(Deserialize)]
-pub struct RulesJson {
+pub struct LangRules {
     pub spacy_version: String,
+    pub lang: String,
     pub faster_heuristics: bool,
     pub prefix: Option<String>,
     pub suffix: Option<String>,
@@ -11,17 +12,37 @@ pub struct RulesJson {
     pub token_match: Option<String>,
     pub url_match: Option<String>,
     pub rules: Vec<(String, Vec<String>)>,
+}
+
+/// Python's Unicode classes (`tools/export_rules.py tables`), shared by every language.
+#[derive(Deserialize)]
+pub struct PyTables {
     pub py_isspace: Vec<(u32, u32)>,
     pub py_w: Vec<(u32, u32)>,
     pub py_d: Vec<(u32, u32)>,
     pub py_s: Vec<(u32, u32)>,
 }
 
-impl std::str::FromStr for RulesJson {
-    type Err = String;
+pub struct RulesJson {
+    pub lang: LangRules,
+    pub tables: PyTables,
+}
 
-    fn from_str(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json).map_err(|e| e.to_string())
+impl RulesJson {
+    pub fn parse(lang_json: &str, tables_json: &str) -> Result<Self, String> {
+        let err = |e: serde_json::Error| e.to_string();
+        Ok(Self {
+            lang: serde_json::from_str(lang_json).map_err(err)?,
+            tables: serde_json::from_str(tables_json).map_err(err)?,
+        })
+    }
+}
+
+impl std::ops::Deref for RulesJson {
+    type Target = LangRules;
+
+    fn deref(&self) -> &LangRules {
+        &self.lang
     }
 }
 
@@ -34,8 +55,8 @@ pub struct PyClasses {
 }
 
 impl PyClasses {
-    pub fn new(r: &RulesJson) -> Self {
-        Self { w: class_body(&r.py_w), d: class_body(&r.py_d), s: class_body(&r.py_s) }
+    pub fn new(t: &PyTables) -> Self {
+        Self { w: class_body(&t.py_w), d: class_body(&t.py_d), s: class_body(&t.py_s) }
     }
 }
 

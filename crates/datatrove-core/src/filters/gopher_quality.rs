@@ -26,9 +26,9 @@ pub struct GopherQuality {
 }
 
 impl GopherQuality {
-    pub fn new(cfg: GopherQualityConfig) -> Self {
+    pub fn new(cfg: GopherQualityConfig, words: Words) -> Self {
         let stop_words = cfg.stop_words.iter().cloned().collect();
-        Self { cfg, stop_words, words: Words::default() }
+        Self { cfg, stop_words, words }
     }
 
     pub fn filter(&mut self, text: &str) -> FilterResult {

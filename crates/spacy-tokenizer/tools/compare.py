@@ -42,6 +42,7 @@ def main():
             print("   spacy:", [text[s : s + ln] for s, ln in only_ref][:12])
             print("   rust: ", [text[s : s + ln] for s, ln in only_rs][:12])
     print("first-diff substrings:", kinds.most_common(30))
+    sys.exit(1 if bad or len(ref) != len(rs) else 0)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 ## Layout
 
 ```
-crates/spacy-tokenizer   spaCy English tokenizer port (prefix/suffix/infix rules, specials, URL matcher, chunk cache)
+crates/spacy-tokenizer   spaCy rule-based tokenizer port, 57 languages (affix rules, specials, URL matcher, chunk cache)
 crates/datatrove-core    filters, MinHash, Python-compatible str/Unicode helpers, `profile` binary
 crates/datatrove-py      PyO3 bindings (datatrove_rs._core)
 python/datatrove_rs      datatrove subclasses, patch/mirror/env-var adoption, fallback logic
@@ -31,7 +31,11 @@ tools/dev.sh parity <fineweb.parquet> ...             # large parity run, see do
 tools/dev.sh bench <fineweb.parquet> [n] [reps]       # docs/s per step vs datatrove
 tools/icount.sh <docs.bin> <stage>...                 # instructions + cycles/doc per `profile` stage
 crates/spacy-tokenizer/tools/parity.sh <docs.bin>     # tokenizer vs spaCy, token spans
+crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: affixes, real and fuzzed docs
 ```
+
+After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/export_rules.py tables` and
+`export_rules.py <lang>...`, then rerun `lang_parity.sh` for each language.
 
 `docs.bin` is UTF-8 docs joined by `\0`. Wall time is unreliable on a loaded machine: A/B Rust changes with
 `tools/icount.sh` (instruction counts are load-independent) and confirm wall time by alternating old/new binaries.

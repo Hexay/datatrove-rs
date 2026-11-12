@@ -45,8 +45,8 @@ pub struct MinHasher {
 }
 
 impl MinHasher {
-    pub fn new(n_grams: usize, norm: NormConfig, hash: HashConfig) -> Self {
-        Self { n_grams, hash, simplifier: Simplifier::new(norm), words: Words::default(), joined: String::new() }
+    pub fn new(n_grams: usize, norm: NormConfig, hash: HashConfig, words: Words) -> Self {
+        Self { n_grams, hash, simplifier: Simplifier::new(norm), words, joined: String::new() }
     }
 
     /// Hashes of `" ".join(ngram)` over the word tokens of the simplified text, in order.

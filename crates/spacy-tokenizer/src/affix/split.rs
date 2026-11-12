@@ -1,27 +1,18 @@
 //! `regex`-crate backend. Each top-level alternative with a fixed-width lookbehind and/or a
-//! single-token lookahead becomes a `LookAlt` whose core is searched with `regex` and whose
-//! lookarounds are checked against the full string, reproducing Python's backtracking order:
+//! single-token lookahead becomes a `LookAlt` (see `look.rs`), reproducing Python's backtracking order:
 //! alternatives are tried in pattern order at the leftmost position (prefix/infix), and for
 //! `$`-anchored suffixes the result is simply the leftmost start over all alternatives.
 
 use super::edges::edge_set;
+use super::look::LookAlt;
 use super::whole::WholeMatcher;
-use super::{anchored, next_char_boundary, rx, Affixes};
-use crate::pyalt::{fixed_char_width, has_lookaround, split_top, strip_lookarounds, PyAlt};
+use super::{next_char_boundary, rx, Affixes};
+use crate::pyalt::{has_lookaround, split_top, strip_lookarounds, PyAlt};
 use crate::pyre::translate;
 use crate::rules::{CharSet, PyClasses, RulesJson};
 use regex::Regex;
-use regex_syntax::hir::{Hir, HirKind};
 
 const MAX_RUNS: usize = 16;
-
-struct LookAlt {
-    lookbehind: Option<(usize, Regex)>,
-    find: Regex,
-    options: Vec<Regex>,
-    lookahead: Option<(bool, Regex)>,
-    edge: Option<CharSet>,
-}
 
 /// `edge`: chars a match can start with (prefix/infix runs) or end with (suffix runs); see `admits`.
 enum Run {
@@ -37,96 +28,18 @@ impl Run {
             Run::Look(l) => &l.edge,
         }
     }
+
+    /// Leftmost (start, len) at or after `pos`, Python `finditer` style (see `SplitAffixes::infixes`).
+    fn find_from(&self, s: &str, pos: usize, must_advance: bool) -> Option<(usize, usize)> {
+        match self {
+            Run::Plain { find, .. } => find.find_at(s, pos).map(|m| (m.start(), m.end() - m.start())),
+            Run::Look(l) => l.find_from(s, pos, must_advance),
+        }
+    }
 }
 
-/// True when the pattern can match at most one length at a given start (no alternation or
-/// repetition), so a failed lookahead cannot be rescued by backtracking into the core.
-fn single_length(t: &str) -> Result<bool, String> {
-    fn walk(h: &Hir) -> bool {
-        match h.kind() {
-            HirKind::Alternation(_) | HirKind::Repetition(_) => false,
-            HirKind::Concat(v) => v.iter().all(walk),
-            HirKind::Capture(c) => walk(&c.sub),
-            _ => true,
-        }
-    }
-    Ok(walk(&regex_syntax::parse(t).map_err(|e| e.to_string())?))
-}
-
-impl LookAlt {
-    fn new(alt: &PyAlt, core: &str, cls: &PyClasses, suffix: bool) -> Result<Self, String> {
-        let lookbehind = match &alt.lookbehind {
-            None => None,
-            Some(lb) => {
-                let w = fixed_char_width(lb).ok_or_else(|| format!("variable lookbehind {lb}"))?;
-                Some((w, rx(&format!("^(?:{})$", translate(lb, cls)?))?))
-            }
-        };
-        let lookahead = match &alt.lookahead {
-            None => None,
-            Some((pos, la)) => Some((*pos, rx(&anchored(la, cls)?)?)),
-        };
-        let mut options = Vec::new();
-        for opt in alt.core_options() {
-            let t = translate(&opt, cls)?;
-            if lookahead.is_some() && !single_length(&t)? {
-                return Err(format!("lookahead after variable-length core {opt}"));
-            }
-            options.push(rx(&format!("^(?:{t})"))?);
-        }
-        let core = translate(core, cls)?;
-        let find = rx(&if suffix { format!("(?:{core})$") } else { format!("(?:{core})") })?;
-        let edge = edge_set(&core, !suffix);
-        Ok(Self { lookbehind, find, options, lookahead, edge })
-    }
-
-    #[inline]
-    fn lookbehind_ok(&self, s: &str, pos: usize) -> bool {
-        let Some((w, re)) = &self.lookbehind else { return true };
-        let mut start = pos;
-        for _ in 0..*w {
-            match s[..start].chars().next_back() {
-                Some(c) => start -= c.len_utf8(),
-                None => return false,
-            }
-        }
-        re.is_match(&s[start..pos])
-    }
-
-    #[inline]
-    fn match_at(&self, s: &str, at: usize) -> Option<usize> {
-        if !self.lookbehind_ok(s, at) {
-            return None;
-        }
-        self.options.iter().find_map(|o| {
-            let len = o.find(&s[at..])?.end();
-            match &self.lookahead {
-                Some((positive, la)) if la.is_match(&s[at + len..]) != *positive => None,
-                _ => Some(len),
-            }
-        })
-    }
-
-    fn find_from(&self, s: &str, mut pos: usize) -> Option<(usize, usize)> {
-        while let Some(m) = self.find.find_at(s, pos) {
-            if let Some(len) = self.match_at(s, m.start()) {
-                return Some((m.start(), len));
-            }
-            pos = next_char_boundary(s, m.start());
-        }
-        None
-    }
-
-    fn suffix_start(&self, s: &str) -> Option<usize> {
-        let mut pos = 0;
-        while let Some(m) = self.find.find_at(s, pos) {
-            if self.lookbehind_ok(s, m.start()) {
-                return Some(m.start());
-            }
-            pos = next_char_boundary(s, m.start());
-        }
-        None
-    }
+fn plain_regex(body: &str, suffix: bool) -> Result<Regex, String> {
+    rx(&if suffix { format!("(?:{body})$") } else { format!("(?:{body})") })
 }
 
 /// Group consecutive lookaround-free alternatives into one `regex`, preserving priority order.
@@ -137,7 +50,11 @@ fn build_runs(py: &str, cls: &PyClasses, suffix: bool) -> Result<Vec<Run>, Strin
     let flush = |plain: &mut Vec<String>, runs: &mut Vec<Run>| -> Result<(), String> {
         if !plain.is_empty() {
             let body = plain.join("|");
-            let find = rx(&if suffix { format!("(?:{body})$") } else { format!("(?:{body})") })?;
+            let find = plain_regex(&body, suffix)?;
+            // Plain runs can't emulate `finditer`'s retry after an empty match; none of spaCy's do.
+            if !suffix && find.is_match("") {
+                return Err(format!("plain alternative matching empty: {body}"));
+            }
             runs.push(Run::Plain { find, at_start: rx(&format!("^(?:{body})"))?, edge: edge_set(&body, !suffix) });
             plain.clear();
         }
@@ -162,11 +79,19 @@ fn build_runs(py: &str, cls: &PyClasses, suffix: bool) -> Result<Vec<Run>, Strin
 }
 
 /// For `$`-anchored suffixes only the leftmost start matters, so lookbehind alternatives that
-/// share a lookbehind are merged into one core regex.
+/// share a lookbehind are merged into one core regex. Whole-string alternatives `^y$` (el) become one
+/// plain run: they can only match at 0, which is the leftmost start anyway.
 fn build_suffix(py: &str, cls: &PyClasses) -> Result<Vec<Run>, String> {
     let alts: Vec<PyAlt> = split_top(py).into_iter().map(PyAlt::parse).collect();
-    if alts.iter().any(|a| !a.end_anchor || a.start_anchor || a.lookahead.is_some()) {
-        return Err("suffix alternative not of form (?<=x)y$".into());
+    if alts.iter().any(|a| !a.end_anchor || !a.lookahead.is_empty() || a.start_anchor && a.lookbehind.is_some()) {
+        return Err("suffix alternative not of form (?<=x)y$ or ^y$".into());
+    }
+    let (whole, alts): (Vec<PyAlt>, Vec<PyAlt>) = alts.into_iter().partition(|a| a.start_anchor);
+    let mut runs = Vec::new();
+    if !whole.is_empty() {
+        let body = whole.iter().map(|a| translate(&a.core, cls)).collect::<Result<Vec<_>, _>>()?.join("|");
+        let find = rx(&format!("^(?:{body})$"))?;
+        runs.push(Run::Plain { at_start: find.clone(), find, edge: edge_set(&body, false) });
     }
     let mut groups: Vec<(Option<String>, Vec<String>)> = Vec::new();
     for a in &alts {
@@ -175,17 +100,33 @@ fn build_suffix(py: &str, cls: &PyClasses) -> Result<Vec<Run>, String> {
             None => groups.push((a.lookbehind.clone(), vec![a.core.clone()])),
         }
     }
-    let mut runs = Vec::new();
     for (lb, cores) in groups {
         let core = format!("(?:{})", cores.join("|"));
-        let alt = PyAlt { start_anchor: false, end_anchor: true, lookbehind: lb, lookahead: None, core: core.clone() };
+        let alt =
+            PyAlt { start_anchor: false, end_anchor: true, lookbehind: lb, lookahead: vec![], core: core.clone() };
         runs.push(Run::Look(LookAlt::new(&alt, &core, cls, true)?));
     }
     Ok(runs)
 }
 
+/// spaCy joins prefixes as `^a|^b|...`, but a punctuation entry containing `|` leaves an alternative
+/// without `^` (id, ms: `<a([^>]+)>`), which `prefix_search` (a `re.search`) then finds anywhere in the string.
+/// Returns those alternatives as one regex, for the search past position 0.
+fn unanchored_prefixes(py: &str, cls: &PyClasses) -> Result<Option<Regex>, String> {
+    let loose: Vec<&str> = split_top(py).into_iter().filter(|a| !a.starts_with('^')).collect();
+    if loose.is_empty() {
+        return Ok(None);
+    }
+    if loose.iter().any(|a| has_lookaround(a)) {
+        return Err("unanchored prefix alternative with lookaround".into());
+    }
+    let body = loose.iter().map(|a| translate(a, cls)).collect::<Result<Vec<_>, _>>()?.join("|");
+    Ok(Some(plain_regex(&body, false)?))
+}
+
 pub struct SplitAffixes {
     prefix: Vec<Run>,
+    prefix_rest: Option<Regex>,
     suffix: Vec<Run>,
     infix: Vec<Run>,
     prefix_first: Option<CharSet>,
@@ -197,23 +138,32 @@ pub struct SplitAffixes {
 
 impl SplitAffixes {
     pub fn new(r: &RulesJson, cls: &PyClasses) -> Result<Self, String> {
-        let prefix = r.prefix.as_deref().map(|p| build_runs(p, cls, false)).transpose()?.unwrap_or_default();
-        if r.prefix.as_deref().is_some_and(|p| split_top(p).iter().any(|a| !a.starts_with('^'))) {
-            return Err("prefix alternative without ^".into());
-        }
+        let prefix_rest = r.prefix.as_deref().map(|p| unanchored_prefixes(p, cls)).transpose()?.flatten();
         let edge = |py: &Option<String>, first: bool| -> Result<Option<CharSet>, String> {
             let Some(py) = py else { return Ok(None) };
             Ok(edge_set(&translate(&strip_lookarounds(py), cls)?, first))
         };
         Ok(Self {
-            prefix_first: edge(&r.prefix, true)?,
+            prefix_first: if prefix_rest.is_some() { None } else { edge(&r.prefix, true)? },
             suffix_last: edge(&r.suffix, false)?,
             infix_first: edge(&r.infix, true)?,
-            prefix,
+            prefix: r.prefix.as_deref().map(|p| build_runs(p, cls, false)).transpose()?.unwrap_or_default(),
+            prefix_rest,
             suffix: r.suffix.as_deref().map(|p| build_suffix(p, cls)).transpose()?.unwrap_or_default(),
             infix: r.infix.as_deref().map(|p| build_runs(p, cls, false)).transpose()?.unwrap_or_default(),
             token_match: WholeMatcher::new(&r.token_match, cls)?,
             url_match: WholeMatcher::new(&r.url_match, cls)?,
+        })
+    }
+
+    fn prefix_at_start(&self, s: &str) -> Option<usize> {
+        let first = s.chars().next();
+        if !admits(&self.prefix_first, first) {
+            return None;
+        }
+        self.prefix.iter().filter(|r| admits(r.edge(), first)).find_map(|run| match run {
+            Run::Plain { at_start, .. } => at_start.find(s).map(|m| m.end()),
+            Run::Look(l) => l.match_at(s, 0, true),
         })
     }
 }
@@ -230,20 +180,14 @@ fn admits(set: &Option<CharSet>, c: Option<char>) -> bool {
 
 impl Affixes for SplitAffixes {
     fn prefix_len(&self, s: &str) -> usize {
-        let first = s.chars().next();
-        if !admits(&self.prefix_first, first) {
+        if let Some(len) = self.prefix_at_start(s) {
+            return len;
+        }
+        let Some(rest) = &self.prefix_rest else { return 0 };
+        if s.is_empty() {
             return 0;
         }
-        for run in self.prefix.iter().filter(|r| admits(r.edge(), first)) {
-            let len = match run {
-                Run::Plain { at_start, .. } => at_start.find(s).map(|m| m.end()),
-                Run::Look(l) => l.match_at(s, 0),
-            };
-            if let Some(len) = len {
-                return len;
-            }
-        }
-        0
+        rest.find_at(s, next_char_boundary(s, 0)).map_or(0, |m| m.end() - m.start())
     }
 
     fn suffix_len(&self, s: &str) -> usize {
@@ -258,6 +202,8 @@ impl Affixes for SplitAffixes {
         start.min().map_or(0, |p| s.len() - p)
     }
 
+    /// Python `finditer` (`_sre` scanner): after an empty match the next search starts at the same position but
+    /// must not end there (`must_advance`); after a non-empty match an empty one may follow at its end.
     fn infixes(&self, s: &str, out: &mut Vec<(usize, usize)>) {
         out.clear();
         if let Some(f) = &self.infix_first {
@@ -267,20 +213,17 @@ impl Affixes for SplitAffixes {
         }
         // Per-run next candidate (start, len); still valid while start >= pos.
         let mut cand: [Option<Option<(usize, usize)>>; MAX_RUNS] = [None; MAX_RUNS];
-        let mut pos = 0;
+        let (mut pos, mut must_advance) = (0, false);
         loop {
             let mut best: Option<(usize, usize)> = None;
             for (k, run) in self.infix.iter().enumerate() {
                 let stale = match cand[k] {
                     None => true,
-                    Some(Some((st, _))) => st < pos,
+                    Some(Some((st, len))) => st < pos || (must_advance && st == pos && len == 0),
                     Some(None) => false,
                 };
                 if stale {
-                    cand[k] = Some(match run {
-                        Run::Plain { find, .. } => find.find_at(s, pos).map(|m| (m.start(), m.end() - m.start())),
-                        Run::Look(l) => l.find_from(s, pos),
-                    });
+                    cand[k] = Some(run.find_from(s, pos, must_advance));
                 }
                 if let Some(Some((st, len))) = cand[k] {
                     if best.is_none_or(|(b, _)| st < b) {
@@ -288,14 +231,10 @@ impl Affixes for SplitAffixes {
                     }
                 }
             }
-            match best {
-                Some((st, len)) if len > 0 => {
-                    out.push((st, st + len));
-                    pos = st + len;
-                }
-                Some(_) => panic!("empty infix match unsupported"),
-                None => break,
-            }
+            let Some((st, len)) = best else { break };
+            out.push((st, st + len));
+            must_advance = len == 0;
+            pos = st + len;
         }
     }
 

@@ -16,9 +16,17 @@ Every check compares against datatrove running unmodified in the same environmen
 
   Pass `--workers N --cache DIR` to parallelise and cache the datatrove side.
 - `tools/dev.sh test` (pytest) runs the parity cases on a smaller corpus. It also covers `simplify_text`, word
-  splitting and sentence splitting on 2,500 random Unicode strings across 17 normalisation configs, the fallback for
-  non-English languages, pickling, and the Trafilatura step when trafilatura-rs is installed.
-- `crates/spacy-tokenizer/tools/parity.sh <docs.bin>` compares tokenizer spans against spaCy.
+  splitting and sentence splitting on 2,500 random Unicode strings across 17 normalisation configs, per-language
+  words, sentences, GopherRepetition, C4 and MinHash on rule-key fuzz docs (`tests/test_languages.py`), the fallback
+  for languages without a Rust tokenizer, pickling, and the Trafilatura step when trafilatura-rs is installed.
+- `crates/spacy-tokenizer/tools/parity.sh <docs.bin> [n] [split|fancy] [lang]` compares tokenizer spans against
+  spaCy. `tools/lang_parity.sh <lang> <docs.bin>` runs one language's full tokenizer check: every prefix/suffix/infix,
+  `token_match` and `url_match` decision on the language's rule keys, case variants and native letters
+  (`affix_ref.py`), real docs, and fuzzed docs (`fuzz_docs.py`). `tools/fetch_fineweb2.py` samples the FineWeb-2
+  subsets datatrove maps to each spaCy language.
+- All 57 rule-based spaCy languages pass with 0 differences: 25.9M affix strings, 221,112 real docs (134.7M tokens,
+  ~218,000 of them FineWeb-2 in 56 languages) and 171,000 fuzzed docs (18.6M tokens). `tools/parity.py --language
+  <code>` then gives 0 filter and MinHash mismatches in all 56 non-English languages (81,825 docs, 50,100 real).
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -46,8 +54,12 @@ Every check compares against datatrove running unmodified in the same environmen
   and the `regex` module's `\p{Nd}` are exported from Python into `crates/datatrove-core/data/py_unicode.json` by
   `tools/export_pytext.py`. The shipped tables come from Python 3.13 (Unicode 15.1). On import, the package warns if
   the running Python uses a different Unicode version, since results could then differ on rare characters.
-- **Language.** The Rust path runs only when datatrove would use a plain `spacy.blank("en")` tokenizer. That covers
-  `eng` and every language code datatrove maps to it. Other languages run datatrove's Python code unchanged.
+- **Language.** The Rust path runs when datatrove would use a plain `spacy.blank(<code>)` tokenizer for one of the 57
+  rule-based spaCy languages (`datatrove_rs._core.spacy_languages()`), which covers every language code datatrove
+  maps to one of them. Their rules are exported from spaCy into `crates/spacy-tokenizer/data/rules/` by
+  `export_rules.py`; case-insensitive patterns are rewritten to the exact code-point sets Python's `re` matches
+  (`ignorecase.py`). Languages with other tokenizers (Chinese, Japanese, Vietnamese, Korean, Thai, Indic and
+  others) run datatrove's Python code unchanged.
 - **The `IS_ALPHA` token.** Inside `memory_zone`, spaCy 3.8 raises an error on the token `IS_ALPHA` once the same
   process has seen that token before, and datatrove then retokenizes the text without it. The result depends on
   process history, so when spaCy is installed any doc containing `IS_ALPHA` runs through datatrove itself.

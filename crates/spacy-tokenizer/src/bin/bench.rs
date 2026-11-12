@@ -1,13 +1,15 @@
-//! bench <docs.bin> [--backend split|fancy] [--cache N] [--reps R] [--limit N] [--strings] [--dump out.bin]
+//! bench <docs.bin> [--lang en|rules.json] [--backend split|fancy] [--cache N] [--reps R] [--limit N] [--strings]
+//! [--dump out.bin]
 //! docs.bin: UTF-8 docs joined by '\0'. --dump writes, per doc, u32 ntok then (u32 idx, u32 len)
 //! in chars — the same format as tools/spacy_ref.py dump.
 
-use spacy_tokenizer_rs::{char_offsets, english, Backend, State};
+use spacy_tokenizer_rs::{char_offsets, langs, Backend, State};
 use std::io::Write;
 use std::time::Instant;
 
 struct Args {
     path: String,
+    lang: String,
     backend: Backend,
     cache: usize,
     reps: usize,
@@ -20,6 +22,7 @@ struct Args {
 fn parse_args() -> Args {
     let mut a = Args {
         path: String::new(),
+        lang: "en".into(),
         backend: Backend::Split,
         cache: 10_000,
         reps: 5,
@@ -32,6 +35,7 @@ fn parse_args() -> Args {
     while let Some(x) = it.next() {
         let mut val = || it.next().expect("missing value");
         match x.as_str() {
+            "--lang" => a.lang = val(),
             "--backend" => a.backend = if val() == "fancy" { Backend::Fancy } else { Backend::Split },
             "--cache" => a.cache = val().parse().unwrap(),
             "--reps" => a.reps = val().parse().unwrap(),
@@ -51,7 +55,7 @@ fn main() {
     let docs: Vec<&str> = raw.split('\0').take(args.limit).collect();
     let mb = docs.iter().map(|d| d.len()).sum::<usize>() as f64 / 1e6;
     let t0 = Instant::now();
-    let tok = english(args.backend);
+    let tok = langs::load(&args.lang, args.backend).unwrap_or_else(|e| panic!("{}: {e}", args.lang));
     eprintln!(
         "load {:.0} ms, spaCy rules {}, {} matcher patterns, {} docs, {mb:.1} MB, backend {:?}, cache {}",
         t0.elapsed().as_secs_f64() * 1e3,

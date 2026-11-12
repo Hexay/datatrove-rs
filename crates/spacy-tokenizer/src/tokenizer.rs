@@ -47,14 +47,18 @@ struct Chunk<'a> {
 }
 
 impl Tokenizer {
-    pub fn from_json(json: &str, backend: Backend) -> Result<Self, String> {
-        let r: RulesJson = json.parse()?;
-        let cls = PyClasses::new(&r);
+    /// `lang_json` from `tools/export_rules.py <lang>`, with the embedded Python Unicode tables.
+    pub fn from_json(lang_json: &str, backend: Backend) -> Result<Self, String> {
+        Self::new(&RulesJson::parse(lang_json, crate::langs::PY_TABLES)?, backend)
+    }
+
+    pub fn new(r: &RulesJson, backend: Backend) -> Result<Self, String> {
+        let cls = PyClasses::new(&r.tables);
         let mut tok = Self {
-            aff: affix::build(&r, &cls, backend)?,
+            aff: affix::build(r, &cls, backend)?,
             specials: Specials::new(&r.rules)?,
             matcher: PhraseTrie::new(),
-            space: CharSet::new(&r.py_isspace),
+            space: CharSet::new(&r.tables.py_isspace),
             spacy_version: r.spacy_version.clone(),
         };
         let mut st = State::new(0);

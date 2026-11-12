@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "datatrove-rs"
 version = "0.1.2"
-description = "Drop-in Rust implementations of datatrove's English Gopher, C4, FineWeb filters and MinHash stage 1"
+description = "Drop-in Rust implementations of datatrove's hot pipeline steps: Gopher, C4, FineWeb filters and MinHash in 57 languages, plus readers, formatters and extraction"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Hexay" }]

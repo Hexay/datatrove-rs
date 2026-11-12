@@ -88,6 +88,29 @@ Trafilatura pure vs rs differ only by noise (same code; range 62-117 s across 6 
 
 Synthetic stage 2 at realistic fan-in (500 sig files): ~33 µs/doc over 14 buckets, < 0.05% of stage A.
 
+## MinHash stage 3 at scale, formatters and C4BadWordsFilter
+
+Stage 3 on synthetic `.dups` (14 buckets, 1.5M chain clusters over 400 files: 37.0M pairs, 4.49M docs), one
+process each, CPU time and peak RSS (64 MB of it is the interpreter and imports). Outputs identical.
+
+| MinhashDedupCluster | datatrove | datatrove-rs |
+|---|---:|---:|
+| default flags | 72.8 s, 829 MB | 5.2 s, 350 MB |
+| `save_cluster_id` + `save_cluster_size` | 89.6 s, 1,015 MB | 3.7 s, 350 MB |
+
+That is ~2 µs vs 0.1-0.14 µs per pair and ~180-220 vs ~64 bytes per doc above the baseline (a hash index from
+node to slot, parent and size arrays, then a sorted node array once the index is freed). Extrapolated to 10⁹ pairs
+over 10⁸ docs: ~35-40 min and ~20 GB in datatrove, ~2-3 min and ~6.5 GB in Rust.
+
+Text steps, CPU µs/doc, one instance per side over all docs (+1,000 copies with injected emails and IPs). FineWeb-2
+is 1,500 docs each of de, fr, ru, ar, el, tr, pl and xx (already FTFY/PII-processed upstream, so few changes).
+
+| Step | FineWeb datatrove | rs | FineWeb-2 datatrove | rs |
+|---|---:|---:|---:|---:|
+| PIIFormatter | 263 | 16.5 (16x) | 173 | 19.1 (9x) |
+| FTFYFormatter (datatrove defaults) | 417 | 12.4 (34x) | 577 | 27.5 (21x) |
+| C4BadWordsFilter (en list) | 403 | 31.6 (13x) | 349 | 27.6 (13x) |
+
 ## Inside Trafilatura (`favor_precision=True`, fallbacks on, datatrove defaults)
 
 | Phase (inclusive) | share |

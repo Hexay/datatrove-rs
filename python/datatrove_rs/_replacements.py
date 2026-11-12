@@ -9,6 +9,8 @@ def replacements() -> dict[type, type]:
     """{datatrove class: datatrove_rs subclass}. MinHash is skipped when `datatrove.pipeline.dedup` can't import
     (it needs `tokenizers`, which filter-only installs may lack)."""
     from datatrove_rs import filters as rs
+    from datatrove_rs.badwords import C4BadWordsFilter
+    from datatrove_rs.formatters import FTFYFormatter, PIIFormatter
     from datatrove_rs.language_filter import LanguageFilter
     from datatrove_rs.readers import WarcReader
     from datatrove_rs.url_filter import URLFilter
@@ -23,12 +25,16 @@ def replacements() -> dict[type, type]:
             WarcReader,
             URLFilter,
             LanguageFilter,
+            PIIFormatter,
+            FTFYFormatter,
+            C4BadWordsFilter,
         )
     }
     try:
-        from datatrove_rs.minhash import MinhashDedupSignature
+        from datatrove_rs.minhash import MinhashDedupCluster, MinhashDedupSignature
 
-        out[_datatrove_base(MinhashDedupSignature)] = MinhashDedupSignature
+        for cls in (MinhashDedupSignature, MinhashDedupCluster):
+            out[_datatrove_base(cls)] = cls
     except ImportError:
         pass
     if importlib.util.find_spec("trafilatura_rs") is not None:

@@ -16,6 +16,7 @@ _EXPORTERS = (
     "datatrove.pipeline.filters",
     "datatrove.pipeline.dedup",
     "datatrove.pipeline.extractors",
+    "datatrove.pipeline.formatters",
     "datatrove.pipeline.readers",
 )
 

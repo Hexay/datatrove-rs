@@ -60,7 +60,7 @@ def to_ranges(cps):
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "crates/datatrove-core/data/py_unicode.json"
-    re_d, re_s, rx_nd = re.compile(r"\d"), re.compile(r"\s"), regex.compile(r"\p{Nd}")
+    re_d, re_s, re_w, rx_nd = re.compile(r"\d"), re.compile(r"\s"), re.compile(r"\w"), regex.compile(r"\p{Nd}")
     ignorable, cased = sigma_classes()
     ccc = [[lo, hi, unicodedata.combining(chr(lo))] for lo, hi in ranges(lambda c: unicodedata.combining(c) > 0)]
     # split multi-valued ranges so each carries a single combining class
@@ -82,6 +82,7 @@ def main():
         "mn": ranges(lambda c: unicodedata.category(c) == "Mn"),
         "re_d": ranges(lambda c: re_d.match(c) is not None),
         "re_s": ranges(lambda c: re_s.match(c) is not None),
+        "re_w": ranges(lambda c: re_w.match(c) is not None),
         "regex_nd": ranges(lambda c: rx_nd.match(c) is not None),
         "linebreak": ranges(lambda c: len(("a" + c + "b").splitlines()) == 2),
         "sigma_ignorable": ignorable,

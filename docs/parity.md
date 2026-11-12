@@ -24,13 +24,25 @@ Every check compares against datatrove running unmodified in the same environmen
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
   With `DATATROVE_RS_WARC=<file.warc.gz> DATATROVE_RS_WARC_LIMIT=1000000` it reads a whole Common Crawl file:
   `CC-MAIN-20240220211055-20240221001055-00000.warc.gz` (1.1 GB) gives identical output.
+- `tests/test_cluster.py` compares `MinhashDedupCluster` output files byte for byte and its stats on synthetic
+  `.dups` (random graphs, chains, index `SENTINEL` pairs, every flag combination, truncated files). Also identical:
+  real stage 1-2 output (25,729 FineWeb docs with injected near-duplicates plus an index, 161,480 pairs) and a
+  synthetic 37M-pair / 4.5M-doc set.
+- `tests/test_pii.py` runs `PIIFormatter` on adversarial strings, 5,000 fuzzed strings, every IPv4 `is_global`
+  interval bound and 20,000 random addresses across five configs, comparing text and the round-robin counters.
+- `tests/test_badwords.py` compares `C4BadWordsFilter` verdicts and stats with the real en/de/ru/ja/zh lists on
+  words flanked by ASCII, Unicode word chars, combining marks and edges.
+- `tests/test_ftfy.py` checks that each translated ftfy regex matches exactly the lines Python's does (6,000
+  mojibake/entity/control-char strings) and that `FTFYFormatter` output equals datatrove's in three configs.
+- On real text (12,000 FineWeb docs, 12,000 FineWeb-2 docs in 8 languages, each plus 1,000 PII-dense copies),
+  `PIIFormatter`, `FTFYFormatter` and `C4BadWordsFilter` give 0 mismatches.
 - `tests/test_url_lang.py` compares `URLFilter` (decisions, reasons, stats; the Rust host split against tldextract
   on ~2,800 URLs built from the suffix list, with and without PSL private domains) and `LanguageFilter` (metadata,
   decisions, stats across six configs).
 
 ## How exactness is kept, and its limits
 
-- **Unicode tables.** Python's `str.isspace`/`isalpha`/`lower`, `unicodedata` NFD and categories, `re`'s `\d`/`\s`,
+- **Unicode tables.** Python's `str.isspace`/`isalpha`/`lower`, `unicodedata` NFD and categories, `re`'s `\d`/`\s`/`\w`,
   and the `regex` module's `\p{Nd}` are exported from Python into `crates/datatrove-core/data/py_unicode.json` by
   `tools/export_pytext.py`. The shipped tables come from Python 3.13 (Unicode 15.1). On import, the package warns if
   the running Python uses a different Unicode version, since results could then differ on rare characters.
@@ -65,6 +77,23 @@ Every check compares against datatrove running unmodified in the same environmen
   176 (see `python/datatrove_rs/language_filter.py`); scores don't depend on the threshold, so the best label and
   every requested language that could pass are the same. Datatrove's full prediction runs when the top label is
   tied or within 0.1% of that floor, with `keep_top_pairs_threshold`, or a non-positive threshold.
+- **MinhashDedupCluster.** Union by size with datatrove's tie rule (the pair's first root wins) and the index
+  `SENTINEL` always becoming the root; roots don't depend on path compression, so nodes `file << 32 | doc` sorted
+  give the same `.remove`/`.clusters`/`.sizes` bytes and cluster ids. Stats are built by the same sequence of
+  `MetricStats.update` float operations, in datatrove's key order. Python still lists, reads and writes the files
+  through fsspec. A root reached only by `(x, x)` pairs raises `KeyError` like datatrove.
+- **PIIFormatter.** Rust `regex` and Python `re` agree on leftmost-first matches for these ASCII patterns; the
+  email pattern's `\b` is checked separately with Python's `\w` table. IPv4 `is_global` comes from the running
+  Python's `ipaddress` networks, evaluated once per interval between their bounds, and leading-zero rejection is
+  probed. The round-robin counters live on datatrove's replacers, so a doc with lone surrogates (which runs in
+  Python) continues the same sequence. Non-default patterns, validators or replacement types run datatrove's code.
+- **C4BadWordsFilter.** The word list is read back from datatrove's own compiled regex and accepted only if
+  re-escaping it rebuilds the identical pattern. A search succeeds iff some occurrence is flanked by a Python
+  non-`\w` char or the text edge (an empty word, from a blank line in the list, is handled too). Lists, sampling
+  and stats stay datatrove's.
+- **FTFYFormatter.** Never changes text itself: it returns the input when ftfy provably would, and calls ftfy
+  otherwise. The proof per fixer is in `python/datatrove_rs/ftfy_check.py`; ftfy's regexes are translated from
+  Python's parse tree. Configs with `fix_line_breaks` or `normalization`, or ftfy other than 6.x, always call ftfy.
 - **Reproduced quirks.** `Counter.most_common` tie-breaking; the `"".join` n-gram keys in `find_all_duplicate`;
   `ZeroDivisionError` on degenerate docs; the one-sentence result for empty text; numpy `uint64` wrap-around in the
   MinHash permutation.

@@ -17,6 +17,7 @@ struct Tables {
     mn: Vec<(u32, u32)>,
     re_d: Vec<(u32, u32)>,
     re_s: Vec<(u32, u32)>,
+    re_w: Vec<(u32, u32)>,
     regex_nd: Vec<(u32, u32)>,
     linebreak: Vec<(u32, u32)>,
     sigma_ignorable: Vec<(u32, u32)>,
@@ -48,6 +49,10 @@ pub struct PyUnicode {
     /// `re` module `\d` / `\s` on str patterns.
     pub re_d: CharSet,
     pub re_s: CharSet,
+    /// `re` module `\w` on str patterns (also decides `\b`).
+    pub re_w: CharSet,
+    /// `re_s`, `re_w`, `re_d` as inclusive code point ranges.
+    pub re_ranges: [Vec<(u32, u32)>; 3],
     /// `regex` module `\p{Nd}` (its Unicode version can differ from `unicodedata`'s).
     pub regex_nd: CharSet,
     /// Characters `str.splitlines()` breaks on (`\r\n` is handled as a pair by the caller).
@@ -75,6 +80,8 @@ impl PyUnicode {
             mn: CharSet::new(&t.mn),
             re_d: CharSet::new(&t.re_d),
             re_s: CharSet::new(&t.re_s),
+            re_w: CharSet::new(&t.re_w),
+            re_ranges: [t.re_s.clone(), t.re_w.clone(), t.re_d.clone()],
             regex_nd: CharSet::new(&t.regex_nd),
             linebreak: CharSet::new(&t.linebreak),
             sigma_ignorable: CharSet::new(&t.sigma_ignorable),

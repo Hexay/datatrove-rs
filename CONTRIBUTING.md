@@ -16,9 +16,14 @@ docs/                    parity notes, FineWeb profile, README assets
 
 ```bash
 uv venv -p 3.13 .venv && uv pip install -p .venv/bin/python maturin -e ".[test,trafilatura]"
-tools/dev.sh build                 # maturin develop --release
+tools/dev.sh build                 # maturin develop, profile iter
 tools/dev.sh test                  # pytest
 ```
+
+`tools/dev.sh build` and the tokenizer parity scripts build with `PROFILE` (default `iter`: no LTO, 16 codegen
+units, incremental for the workspace crates, so an edit rebuilds in seconds; same output). Benches and wheels need
+`release`: `tools/dev.sh bench` installs it itself, `tools/icount.sh` builds it. Leave `CARGO_INCREMENTAL` alone:
+the scripts unset it for `iter` so dependencies stay sccache-cached. `cargo test --profile iter` runs the Rust tests.
 
 Use Python 3.13 so the running Unicode version matches the shipped tables. To test against an upstream checkout,
 add `-e <path-to-datatrove>` to the install. After upgrading Python or `regex`, re-export the Unicode tables with
@@ -33,6 +38,16 @@ tools/icount.sh <docs.bin> <stage>...                 # instructions + cycles/do
 crates/spacy-tokenizer/tools/parity.sh <docs.bin>     # tokenizer vs spaCy, token spans
 crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: affixes, real and fuzzed docs
 ```
+
+`tools/dev.sh parity` caches the datatrove side in `$DATATROVE_RS_PARITY_CACHE` (default
+`/srv/agents/cache/parity-cache` when present, else `~/.cache/datatrove-rs/parity`), keyed by corpus, config and the
+datatrove and spaCy versions. The tokenizer scripts cache spaCy's dumps next to `docs.bin`, each with a
+`.spacy-version` stamp (redone when spaCy changes), and write the Rust dumps to `$SPACY_PARITY_OUT` (default
+`~/.cache/datatrove-rs/out/<worktree dir>`), so parallel worktrees don't overwrite each other's.
+
+On the shared box, `tools/dev.sh test|parity|bench` and each `lang_parity.sh`/`parity.sh` run take one of the two
+light.lock slots in `$LIGHT_LOCK_DIR` (`tools/slot.sh`) for that run only. Never wrap a loop of runs, or these
+scripts, in `flock`: a slot held across a loop blocks every other worktree for its whole length.
 
 After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/export_rules.py tables` and
 `export_rules.py <lang>...`, then rerun `lang_parity.sh` for each language.

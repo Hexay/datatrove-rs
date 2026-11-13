@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import datatrove_rs as rs  # noqa: E402
 from cjk_fuzz import fuzz_docs  # noqa: E402
 from datatrove_rs import _base, _core, cjk  # noqa: E402
+from ngram_parity import check_language  # noqa: E402
 from parity import check_filter, check_minhash  # noqa: E402
 from parity_ref import settle_is_alpha_state  # noqa: E402
 
@@ -59,6 +60,7 @@ def test_steps(code):
         kwargs = {"language": key} | kwargs
         assert check_filter(name, py_cls, rs_cls, kwargs, docs, report) == (0, True), report.getvalue()[:3000]
     assert check_minhash("MinHash", {}, docs, report, language=key) == (0, True), report.getvalue()[:3000]
+    assert not [r for r in check_language(docs, report, key) if r[1] or not r[2]], report.getvalue()[:3000]
 
 
 def test_language_variants():

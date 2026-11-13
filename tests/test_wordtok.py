@@ -16,6 +16,7 @@ from datatrove.utils.word_tokenizers import load_tokenizer_assignments, load_wor
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import datatrove_rs as rs  # noqa: E402
 from datatrove_rs import _base, _core  # noqa: E402
+from ngram_parity import check_language  # noqa: E402
 from parity import check_filter, check_minhash  # noqa: E402
 from wordtok_fuzz import fuzz_docs  # noqa: E402
 from wordtok_parity import check_sentences  # noqa: E402
@@ -75,6 +76,7 @@ def test_steps(name):
         bad = check_filter(case, py_cls, rs_cls, {"language": key} | kwargs, docs, report)
         assert bad == (0, True), report.getvalue()[:3000]
     assert check_minhash("MinHash", {}, docs, report, language=key) == (0, True), report.getvalue()[:3000]
+    assert not [r for r in check_language(docs, report, key) if r[1] or not r[2]], report.getvalue()[:3000]
 
 
 def test_c4_falls_back_where_rust_cannot_decide():

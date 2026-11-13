@@ -16,12 +16,28 @@ pub struct PyMinHasher {
     sig: Vec<u64>,
 }
 
-fn u64s(bytes: &[u8]) -> PyResult<Vec<u64>> {
+pub(crate) fn u64s(bytes: &[u8]) -> PyResult<Vec<u64>> {
     let (chunks, rest) = bytes.as_chunks::<8>();
     if !rest.is_empty() {
         return Err(PyValueError::new_err("expected a little-endian uint64 buffer"));
     }
     Ok(chunks.iter().map(|&c| u64::from_le_bytes(c)).collect())
+}
+
+/// `n_grams`, `norm` (TextNormConfig fields in declaration order), HashConfig fields, spaCy code or tokenizer name.
+pub(crate) fn shingler(
+    n_grams: usize,
+    norm: (bool, bool, bool, bool, bool, bool, bool),
+    hash_fc: &str,
+    precision: u32,
+    language: &str,
+) -> PyResult<MinHasher> {
+    let hash_fn = match hash_fc {
+        "xxhash" => HashFn::Xxhash,
+        "sha1" => HashFn::Sha1,
+        other => return Err(PyValueError::new_err(format!("Unknown hash_fc={other:?}"))),
+    };
+    Ok(MinHasher::new(n_grams, norm_config(norm), HashConfig { hash_fn, precision }, words(language)?))
 }
 
 #[pymethods]
@@ -37,13 +53,8 @@ impl PyMinHasher {
         b: &[u8],
         language: &str,
     ) -> PyResult<Self> {
-        let hash_fn = match hash_fc {
-            "xxhash" => HashFn::Xxhash,
-            "sha1" => HashFn::Sha1,
-            other => return Err(PyValueError::new_err(format!("Unknown hash_fc={other:?}"))),
-        };
         Ok(Self {
-            inner: MinHasher::new(n_grams, norm_config(norm), HashConfig { hash_fn, precision }, words(language)?),
+            inner: shingler(n_grams, norm, hash_fc, precision, language)?,
             a: u64s(a)?,
             b: u64s(b)?,
             precision,

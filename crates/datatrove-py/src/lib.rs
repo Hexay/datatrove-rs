@@ -5,6 +5,7 @@ mod cjk;
 mod cluster;
 mod ftfy_check;
 mod minhash;
+mod ngram_steps;
 mod pii;
 mod stats;
 mod url;
@@ -294,5 +295,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TokenizerFallback", m.py().get_type::<cjk::TokenizerFallback>())?;
     m.add_function(wrap_pyfunction!(wordtok::word_tokenizers, m)?)?;
     m.add_function(wrap_pyfunction!(wordtok::sentence_count, m)?)?;
-    stats::register(m)
+    stats::register(m)?;
+    ngram_steps::register(m)
 }

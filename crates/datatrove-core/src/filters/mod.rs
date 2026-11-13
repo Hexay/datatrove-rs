@@ -8,6 +8,7 @@ pub mod gopher_quality;
 pub mod gopher_repetition;
 pub mod strset;
 pub mod tld;
+pub mod unigram;
 pub mod url;
 
 use std::borrow::Cow;

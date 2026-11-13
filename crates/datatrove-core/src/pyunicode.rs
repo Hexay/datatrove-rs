@@ -13,6 +13,10 @@ struct Tables {
     unidata_version: String,
     isspace: Vec<(u32, u32)>,
     isalpha: Vec<(u32, u32)>,
+    isdigit: Vec<(u32, u32)>,
+    isupper: Vec<(u32, u32)>,
+    islower: Vec<(u32, u32)>,
+    istitle: Vec<(u32, u32)>,
     punct: Vec<(u32, u32)>,
     mn: Vec<(u32, u32)>,
     re_d: Vec<(u32, u32)>,
@@ -42,6 +46,11 @@ pub struct PyUnicode {
     /// `str.isspace`, also what `str.strip()`/`str.split()` use.
     pub isspace: CharSet,
     pub isalpha: CharSet,
+    pub isdigit: CharSet,
+    /// CPython's per-char case flags (`Py_UNICODE_ISUPPER`/`ISLOWER`/`ISTITLE`), see `pystr::is_upper`.
+    pub isupper: CharSet,
+    pub islower: CharSet,
+    pub istitle: CharSet,
     /// `unicodedata.category(c).startswith("P")` — spaCy's `is_punct`.
     pub punct: CharSet,
     /// `unicodedata.category(c) == "Mn"`.
@@ -76,6 +85,10 @@ impl PyUnicode {
             unidata_version: t.unidata_version,
             isspace: CharSet::new(&t.isspace),
             isalpha: CharSet::new(&t.isalpha),
+            isdigit: CharSet::new(&t.isdigit),
+            isupper: CharSet::new(&t.isupper),
+            islower: CharSet::new(&t.islower),
+            istitle: CharSet::new(&t.istitle),
             punct: CharSet::new(&t.punct),
             mn: CharSet::new(&t.mn),
             re_d: CharSet::new(&t.re_d),

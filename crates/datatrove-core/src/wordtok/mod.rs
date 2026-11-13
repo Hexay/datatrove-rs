@@ -36,6 +36,11 @@ pub trait Splitter: Sync + Send {
         SentenceCount::Unknown
     }
 
+    /// Code-point lengths of `sent_tokenize(text)` for splitters whose sentences don't come from a spaCy `Doc`.
+    fn sentence_lengths(&self, _text: &str) -> Option<Vec<usize>> {
+        None
+    }
+
     /// True when `split` gives a spaCy `Doc`'s tokens, which the `sentencizer` pipe then splits like any spaCy
     /// language's.
     fn spacy_doc(&self) -> bool {

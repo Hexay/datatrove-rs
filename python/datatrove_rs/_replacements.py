@@ -31,6 +31,13 @@ def replacements() -> dict[type, type]:
         )
     }
     try:
+        from datatrove_rs import stats
+
+        for cls in (stats.WordStats, stats.SentenceStats, stats.DocStats, stats.LineStats, stats.ParagraphStats):
+            out[_datatrove_base(cls)] = cls
+    except ImportError:
+        pass
+    try:
         from datatrove_rs.minhash import MinhashDedupCluster, MinhashDedupSignature
 
         for cls in (MinhashDedupSignature, MinhashDedupCluster):

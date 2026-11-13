@@ -65,6 +65,10 @@ You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py
 | `readers.WarcReader` | ~2.2x | gzip WARCs; charset detection stays in Python |
 | `filters.URLFilter` | ~7x | mostly blocklist loading and tldextract setup |
 | `filters.LanguageFilter` | ~1.3x | the rest is fastText's own C++ inference |
+| `stats.WordStats` | 24-32x | full `run()`, all four groups; 20-31x German/Chinese, 2x Hindi |
+| `stats.SentenceStats` | 50x | 54x German, 28x Chinese, 2.5x Hindi; Thai/Urdu sentences stay Python |
+| `stats.DocStats` | 8x | |
+| `stats.LineStats`, `stats.ParagraphStats` | 3-4x | mostly the per-group bookkeeping |
 
 Filters and MinHash stage 1 run in Rust for the 57 languages spaCy tokenizes with rules (English plus German,
 French, Spanish, Russian, Italian, Portuguese, Polish, Dutch, Turkish, Indonesian and 46 more), with 53-88x on the
@@ -91,13 +95,15 @@ Output equality with datatrove is the product, so every change is checked agains
   81,825 FineWeb-2 and fuzzed documents across the 56 other languages, 33,205 in Chinese and Japanese and 44,300 in
   Vietnamese, Thai and the 16 Indic tokenizers. The tokenizers match datatrove's on 153M tokens in 57 spaCy
   languages, 21.4M Chinese and Japanese tokens and 58.3M Vietnamese, Thai and Indic tokens.
+- **Stats steps:** per-task and merged stats files, per-doc metadata and step stats byte-identical on 10,500
+  English documents across 13 configurations and 23,125 documents in 13 other languages.
 - **Trafilatura:** 10,666 of 10,666 Common Crawl pages identical (see trafilatura-rs).
 - **End to end:** the FineWeb recipe gives identical output on 5,000 Common Crawl records.
 
 When the Rust path can't guarantee identical results, the step falls back to datatrove's own code for that case.
 This applies to languages without a Rust tokenizer (Korean, Stanza languages), to Chinese without
 jieba 0.42.1 and Japanese without SudachiPy 0.7.0 and SudachiDict-core installed, to pythainlp, indic-nlp-library or
-pyvi at other versions than the ported ones, to sentence counts the ports don't reproduce, and to Trafilatura options
+pyvi at other versions than the ported ones, to sentence counts the ports don't reproduce, to the stats steps on datatrove releases other than 0.10.1, and to Trafilatura options
 trafilatura-rs doesn't cover. Details and
 reproduced quirks are in [docs/parity.md](docs/parity.md).
 

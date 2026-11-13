@@ -42,6 +42,7 @@ crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: a
 crates/cjk-tokenizer/tools/parity.sh <zh|ja> <docs.bin>       # jieba/Sudachi port vs datatrove's tokenizer
 tools/cjk_fuzz.py <out.bin> <n> <zh|ja>                        # adversarial Chinese/Japanese docs
 tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]... # vi/Thai/Indic ports vs datatrove's tokenizers
+tools/stats_parity.py <parquet> [--language KEY]      # stats steps: files, merged files, metadata, stats
 ```
 
 `tools/dev.sh parity` caches the datatrove side in `$DATATROVE_RS_PARITY_CACHE` (default
@@ -59,7 +60,8 @@ After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/ex
 the `sudachi` tag in `crates/cjk-tokenizer/Cargo.toml`, `SUDACHI_VERSION` and the test pin, then rerun
 `cjk-tokenizer/tools/parity.sh ja`. To follow pythainlp, indic-nlp-library or pyvi, re-export with
 `tools/export_wordtok.py` / `tools/export_vi.py`, rerun `tools/wordtok_parity.sh`, then add the version to
-`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. `PROFILE_LANG=thai|vi|indic:<code>` profiles a
+`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. For a new datatrove release, rerun
+`tools/stats_parity.py` and add it to `VERIFIED_DATATROVE` in `python/datatrove_rs/_stats_run.py`. `PROFILE_LANG=thai|vi|indic:<code>` profiles a
 port with the `profile` binary.
 
 `docs.bin` is UTF-8 docs joined by `\0`. Wall time is unreliable on a loaded machine: A/B Rust changes with

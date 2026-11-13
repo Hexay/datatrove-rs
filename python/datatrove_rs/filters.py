@@ -1,7 +1,7 @@
 from datatrove.pipeline import filters as dt
 
 from datatrove_rs import _core, _wordtok
-from datatrove_rs._base import _NOT_APPLICABLE, RustBacked
+from datatrove_rs._base import _NOT_APPLICABLE, FALLBACK, RustBacked
 from datatrove_rs._run import Counters, FastRun
 
 # Indexed by the line outcome codes C4Quality.filter returns; code 6 = the line dropped the whole doc.
@@ -23,7 +23,7 @@ class _RustFilter(RustBacked, FastRun):
         if rs:
             try:
                 return self._rust_filter(rs, doc)
-            except _core.TokenizerFallback:
+            except FALLBACK:
                 pass
         return super().filter(doc)
 
@@ -38,7 +38,7 @@ class _RustFilter(RustBacked, FastRun):
                 return py_filter(doc)
             try:
                 return rust_filter(rs, doc, counters)
-            except _core.TokenizerFallback:
+            except FALLBACK:
                 return py_filter(doc)
 
         return filter_doc

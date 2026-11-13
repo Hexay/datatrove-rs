@@ -8,6 +8,8 @@ from datatrove.utils.word_tokenizers import SpaCyTokenizer, WordTokenizer, load_
 from datatrove_rs import _core, _wordtok, cjk
 
 _NOT_APPLICABLE = False
+# Errors after which a doc runs datatrove's code; text with lone surrogates can't be passed to Rust as UTF-8.
+FALLBACK = (_core.TokenizerFallback, UnicodeEncodeError)
 
 
 @lru_cache(maxsize=1)
@@ -43,6 +45,19 @@ def rust_language(language) -> str | None:
     if cls_name == "SpaCyTokenizer" and code in rust_languages():
         return code
     return _wordtok.rust_name(cls_name, code)
+
+
+def norm_fields(n) -> tuple:
+    """A `TextNormConfig`'s fields in declaration order, as the Rust shinglers take them."""
+    return (
+        n.lowercase,
+        n.norm_whitespace,
+        n.remove_punctuation,
+        n.norm_unicode_diacritics,
+        n.norm_numbers,
+        n.norm_weekdays,
+        n.norm_monthnames,
+    )
 
 
 def check_unicode_tables():

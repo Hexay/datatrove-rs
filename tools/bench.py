@@ -4,7 +4,7 @@ Usage: bench.py <fineweb.parquet> [n_docs=1500] [reps=3] [language]
 
 Filters are timed via `filter()` on fresh Documents; the chain runs GopherRepetition -> GopherQuality ->
 C4Quality -> FineWebQuality through `run()` as a FineWeb-style pipeline would. MinHash times
-get_shingles + get_signature. Reports the median of `reps`.
+get_shingles + get_signature; the Bloom filter `step()` on a fresh 1 MB filter per rep. Reports the median of `reps`.
 """
 
 import os
@@ -84,6 +84,36 @@ def stats_run(cls, texts, tmp):
     return run
 
 
+def ngram_steps(texts, tmp):
+    """(name, py_fn, rs_fn) for SingleBloomFilter.step, NGramsDecontFilter and UnigramLogProbFilter `filter()`.
+    The decont index holds n-grams of every 5th doc; unigram reads datatrove's table (downloaded if not cached)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ngram_parity import decont_pairs, dtb, dtd, dtu, rsb, rsd, rsu, write_index
+
+    lang = LANG.get("language", "eng")
+    index = os.path.join(tmp, "decont-index")
+    os.makedirs(index, exist_ok=True)
+    write_index(index, decont_pairs(texts), dtd.NGramsDecontConfig(), lang)
+
+    def bloom(cls):
+        def run():
+            step = cls(tmp, config=dtb.BloomFilterConfig(m_bytes=(1 << 20) - 1, k=5), language=lang)
+            for t in texts:
+                step.step(Document(text=t, id="0"))
+
+        return run
+
+    def decont(cls):
+        step = cls(index, language=lang)
+        return lambda: [step.filter(Document(text=t, id="0")) for t in texts]
+
+    return [
+        ("SingleBloomFilter", bloom(dtb.SingleBloomFilter), bloom(rsb.SingleBloomFilter)),
+        ("NGramsDecontFilter", decont(dtd.NGramsDecontFilter), decont(rsd.NGramsDecontFilter)),
+        ("UnigramLogProbFilter", filter_all(dtu.UnigramLogProbFilter, texts), filter_all(rsu.UnigramLogProbFilter, texts)),
+    ]
+
+
 def c4_ok(texts):
     """The docs datatrove's own C4 doesn't raise on (some Indic sentence splits do, Urdu without urduhack)."""
     step = dt.C4QualityFilter(**LANG)
@@ -115,6 +145,7 @@ def main():
     rows.append(("MinHash stage 1", texts, minhash(dtm.MinhashDedupSignature, texts, tmp), minhash(RsMinhash, texts, tmp)))
     for name in STATS:
         rows.append((f"{name} (run)", texts, stats_run(getattr(dts, name), texts, tmp), stats_run(getattr(rss, name), texts, tmp)))
+    rows += [(name, texts, p, r) for name, p, r in ngram_steps(texts, tmp)]
 
     print(f"{n} docs, {mb:.1f} MB, median of {reps}, language {LANG.get('language', 'default')}")
     print(f"C4 and the chain run on the {len(c4_texts)} docs datatrove's C4 doesn't raise on\n")

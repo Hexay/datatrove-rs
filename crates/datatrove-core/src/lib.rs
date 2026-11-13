@@ -1,11 +1,14 @@
 //! Bit-exact Rust ports of datatrove's English Gopher, C4 and FineWeb filters and MinHash stage 1.
 //! Python string semantics come from `pystr`/`pyunicode`; parity is checked by `tools/parity.py`.
 
+pub mod bloom;
 pub mod cjk_words;
 pub mod cluster;
+pub mod decont;
 pub mod filters;
 pub mod ftfy_check;
 pub mod minhash;
+pub mod ngrams;
 pub mod pii;
 pub mod pystr;
 pub mod pyunicode;

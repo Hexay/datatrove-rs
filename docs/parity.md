@@ -50,6 +50,19 @@ Every check compares against datatrove running unmodified in the same environmen
   for WordStats/SentenceStats, on 23,125 FineWeb-2 and fuzzed docs in German, French, Russian, Arabic, Turkish,
   Chinese, Japanese, Vietnamese, Thai, Hindi, Bengali, Tamil and Urdu (Urdu SentenceStats raises in both without
   urduhack). `tests/test_stats.py` repeats a small version, plus `str(round(x, d))` on 10,000+ floats and ties.
+- `tools/ngram_parity.py <parquet> --language <key>` checks `SingleBloomFilter`, `NGramsDecontFilter`,
+  `NGramsDecontIndexer.compute_hashes` and `UnigramLogProbFilter`. Bloom runs `run()` over real, perturbed, fuzzed
+  and heavy-duplication docs (`dup_docs`: copies, partial copies, concatenations, edits, repeated sentences) in 8
+  configs (`m_bytes` from 37 to 2**20, k 0-5 and from `expected_elements`, 1-13-grams, thresholds 0/0.5/0.8/0.9/1,
+  sha1, raw and date normalisation), comparing kept docs, stats, excluded docs, `total_shingles` and the saved
+  `bloom_filter.bloom` bytes. Decont builds index files from spans of the corpus with datatrove's indexer (4 tasks,
+  two with `:`), then compares per-doc results, `run()` stats and excluded docs with their metadata, in 4 configs.
+  Unigram compares at 6 thresholds, among them an int, a doc's exact mean and the next float below the largest. 0
+  mismatches in all 18 cases on: 4,000 FineWeb docs (+1,000 perturbed, 1,000 fuzzed, 5,000 duplication docs) with
+  datatrove's real `unigram_freq.csv`; and 1,000 FineWeb-2 docs each (+250 perturbed, 300 fuzzed, 1,000 duplication)
+  in German, Russian, French, Greek, Chinese, Japanese, Vietnamese, Thai and Hindi, with a table built from the
+  corpus. `tests/test_ngram_steps.py` repeats it on fuzzed docs, and `check_language` runs per language in
+  `test_languages.py`, `test_cjk.py` and `test_wordtok.py`.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -174,6 +187,15 @@ Every check compares against datatrove running unmodified in the same environmen
   (`VERIFIED_DATATROVE`), unmodified `extract_stats`/`get_kv`/`track_time`, int `histogram_round_digits` >= 0 and
   plain int thresholds and str stop words take the Rust path; LineStats docs with `metadata["lines"]` extract in
   Python.
+- **Bloom, decont, unigram.** Bloom and decont reuse MinHash's shingling (`crates/datatrove-core/src/ngrams.rs`).
+  The Bloom bit vector stays the step's `bytearray`, written in place only after the doc tokenized cleanly, so
+  `run()` and the saved file are datatrove's; datatrove masks bit indexes with `& m_bytes` (not `% m`), so a
+  power-of-two `m_bytes` reaches 2 bits. Decont mirrors the loaded `_index_hashes` keys (skipping tasks of `None`)
+  in a Rust set, reloaded when the dict is replaced or resized; the task comes from the dict on a hit. Unigram takes
+  each frequency's log from the same scalar `np.log` call datatrove makes, sums left to right and divides once
+  (Python's `sum` over `np.float64` has no compensated path), and leaves `> threshold` to numpy; tables with a
+  non-positive or non-float frequency run datatrove's code. A subclass overriding `get_shingles`, `get_indexes`,
+  `query`, `update_bf`, `step` or `get_logprob` gets datatrove's code; lone surrogates fall back per doc.
 - **Reproduced quirks.** `Counter.most_common` tie-breaking; the `"".join` n-gram keys in `find_all_duplicate`;
   `ZeroDivisionError` on degenerate docs; the one-sentence result for empty text; numpy `uint64` wrap-around in the
   MinHash permutation.

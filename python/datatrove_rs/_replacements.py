@@ -6,13 +6,15 @@ from functools import lru_cache
 
 @lru_cache(maxsize=None)
 def replacements() -> dict[type, type]:
-    """{datatrove class: datatrove_rs subclass}. MinHash is skipped when `datatrove.pipeline.dedup` can't import
-    (it needs `tokenizers`, which filter-only installs may lack)."""
+    """{datatrove class: datatrove_rs subclass}. MinHash and the Bloom filter are skipped when
+    `datatrove.pipeline.dedup` can't import (it needs `tokenizers`, which filter-only installs may lack)."""
     from datatrove_rs import filters as rs
     from datatrove_rs.badwords import C4BadWordsFilter
+    from datatrove_rs.decont import NGramsDecontFilter, NGramsDecontIndexer
     from datatrove_rs.formatters import FTFYFormatter, PIIFormatter
     from datatrove_rs.language_filter import LanguageFilter
     from datatrove_rs.readers import WarcReader
+    from datatrove_rs.unigram import UnigramLogProbFilter
     from datatrove_rs.url_filter import URLFilter
 
     out = {
@@ -28,6 +30,9 @@ def replacements() -> dict[type, type]:
             PIIFormatter,
             FTFYFormatter,
             C4BadWordsFilter,
+            UnigramLogProbFilter,
+            NGramsDecontFilter,
+            NGramsDecontIndexer,
         )
     }
     try:
@@ -38,9 +43,10 @@ def replacements() -> dict[type, type]:
     except ImportError:
         pass
     try:
+        from datatrove_rs.bloom_filter import SingleBloomFilter
         from datatrove_rs.minhash import MinhashDedupCluster, MinhashDedupSignature
 
-        for cls in (MinhashDedupSignature, MinhashDedupCluster):
+        for cls in (MinhashDedupSignature, MinhashDedupCluster, SingleBloomFilter):
             out[_datatrove_base(cls)] = cls
     except ImportError:
         pass

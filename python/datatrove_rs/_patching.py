@@ -15,6 +15,7 @@ from datatrove_rs._replacements import replacements
 _EXPORTERS = (
     "datatrove.pipeline.filters",
     "datatrove.pipeline.dedup",
+    "datatrove.pipeline.decont",
     "datatrove.pipeline.extractors",
     "datatrove.pipeline.formatters",
     "datatrove.pipeline.readers",

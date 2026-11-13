@@ -5,7 +5,7 @@ from datatrove.utils.stats import MetricStats
 from tqdm import tqdm
 
 from datatrove_rs import _core
-from datatrove_rs._base import RustBacked
+from datatrove_rs._base import FALLBACK, RustBacked, norm_fields
 
 _READ_CHUNK = 1 << 24
 
@@ -15,20 +15,10 @@ class MinhashDedupSignature(RustBacked, dt.MinhashDedupSignature):
 
     def _build_rust(self, language):
         a, b = self.parameters
-        n = self.config.norm_config
         h = self.config.hash_config
-        norm = (
-            n.lowercase,
-            n.norm_whitespace,
-            n.remove_punctuation,
-            n.norm_unicode_diacritics,
-            n.norm_numbers,
-            n.norm_weekdays,
-            n.norm_monthnames,
-        )
         return _core.MinHasher(
             self.config.n_grams,
-            norm,
+            norm_fields(self.config.norm_config),
             h.hash_fc,
             h.precision,
             a.astype("<u8").tobytes(),
@@ -42,7 +32,7 @@ class MinhashDedupSignature(RustBacked, dt.MinhashDedupSignature):
             return super().get_shingles(text)
         try:
             return np.frombuffer(rs.shingles(text), dtype="<u8").reshape((-1, 1))
-        except _core.TokenizerFallback:
+        except FALLBACK:
             return super().get_shingles(text)
 
     def get_signature(self, shingles: np.ndarray) -> list[list[int]]:

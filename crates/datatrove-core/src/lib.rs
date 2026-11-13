@@ -12,6 +12,7 @@ pub mod ngrams;
 pub mod pii;
 pub mod pystr;
 pub mod pyunicode;
+pub mod sentdedup;
 pub mod simplify;
 pub mod stats;
 pub mod warc;

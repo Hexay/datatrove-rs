@@ -15,6 +15,8 @@ __all__ = [
     "GopherRepetitionFilter",
     "MinhashDedupCluster",
     "MinhashDedupSignature",
+    "SentenceDedupFilter",
+    "SentenceDedupSignature",
     "is_patched",
     "patch",
     "unpatch",
@@ -27,4 +29,8 @@ def __getattr__(name):
         from datatrove_rs import minhash
 
         return getattr(minhash, name)
+    if name in ("SentenceDedupSignature", "SentenceDedupFilter"):
+        from datatrove_rs import sentence_dedup
+
+        return getattr(sentence_dedup, name)
     raise AttributeError(f"module 'datatrove_rs' has no attribute {name!r}")

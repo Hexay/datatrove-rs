@@ -2,28 +2,28 @@
 //! datatrove's `strip_strings` and `simple_span_tokenize`, which raises when a merged sentence isn't in `text`.
 
 use super::indic::{tables, Tables};
-use super::SentenceCount;
-use crate::pystr::{char_len, strip};
+use super::{simple_span_ends, SentenceCount};
+use crate::pystr::strip;
 
 pub(super) fn sentence_count(text: &str, lang: &str) -> SentenceCount {
-    let sents = sentence_split(text, lang);
-    let sents: Vec<&str> = sents.iter().map(|s| strip(s)).filter(|s| !s.is_empty()).collect();
+    let sents = sentences(text, lang);
     if sents.len() <= 1 {
         return SentenceCount::Exact(1);
     }
-    let mut start = 0;
-    for s in &sents {
-        match text[start..].find(s) {
-            Some(off) => start += off + s.len(),
-            None => return SentenceCount::Unknown,
-        }
-    }
-    SentenceCount::Exact(sents.len())
+    simple_span_ends(text, &sents).map_or(SentenceCount::Unknown, |e| SentenceCount::Exact(e.len()))
 }
 
-/// Code-point lengths of `strip_strings(sentence_split(text, lang))`.
-pub(super) fn sentence_lengths(text: &str, lang: &str) -> Vec<usize> {
-    sentence_split(text, lang).iter().map(|s| char_len(strip(s))).filter(|&n| n > 0).collect()
+/// `IndicNLPTokenizer.sent_tokenize`: `sentence_split` then `strip_strings`.
+pub(super) fn sentences(text: &str, lang: &str) -> Vec<String> {
+    let mut sents = sentence_split(text, lang);
+    sents.retain_mut(|s| {
+        let t = strip(s);
+        if t.len() != s.len() {
+            *s = t.to_owned();
+        }
+        !s.is_empty()
+    });
+    sents
 }
 
 fn sentence_split(text: &str, lang: &str) -> Vec<String> {

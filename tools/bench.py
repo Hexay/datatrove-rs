@@ -4,24 +4,31 @@ Usage: bench.py <fineweb.parquet> [n_docs=1500] [reps=3] [language]
 
 Filters are timed via `filter()` on fresh Documents; the chain runs GopherRepetition -> GopherQuality ->
 C4Quality -> FineWebQuality through `run()` as a FineWeb-style pipeline would. MinHash times
-get_shingles + get_signature; the Bloom filter `step()` on a fresh 1 MB filter per rep. Reports the median of `reps`.
+get_shingles + get_signature; the Bloom filter `step()` on a fresh 1 MB filter per rep. Sentence dedup times stage 1
+and stage 3 `run()` (default SentDedupConfig; stage 3 on the docs datatrove's `span_tokenize` doesn't raise on). Reports the median of `reps`.
 """
 
 import os
+import random
 import statistics
 import sys
 import time
 
+import numpy as np
 import pyarrow.parquet as pq
 from datatrove.data import Document
 from datatrove.pipeline import filters as dt
 from datatrove.pipeline import stats as dts
 from datatrove.pipeline.dedup import minhash as dtm
+from datatrove.pipeline.dedup import sentence_dedup as dtsd
 from loguru import logger
+from sentdedup_ref import span_safe
 
 import datatrove_rs as rs
 from datatrove_rs import stats as rss
 from datatrove_rs.minhash import MinhashDedupSignature as RsMinhash
+from datatrove_rs.sentence_dedup import SentenceDedupFilter as RsSentFilter
+from datatrove_rs.sentence_dedup import SentenceDedupSignature as RsSentSig
 
 STEPS = [
     ("GopherRepetition", dt.GopherRepetitionFilter, rs.GopherRepetitionFilter),
@@ -114,6 +121,25 @@ def ngram_steps(texts, tmp):
     ]
 
 
+def _docs(texts):
+    return (Document(text=t, id=str(i)) for i, t in enumerate(texts))
+
+
+def sentdedup_stage1(cls, texts, tmp):
+    return lambda: cls(os.path.join(tmp, "sigs"), config=dtsd.SentDedupConfig(), **LANG).run(_docs(texts))
+
+
+def sentdedup_stage3(cls, texts, tmp):
+    """`run()` with one duplicate 3-sentence span per doc (at sentence 0-2), so every doc goes through
+    `remove_dup_sentences` and the min_doc_words / min_num_sentences checks."""
+    folder = os.path.join(tmp, "dups")
+    os.makedirs(os.path.join(folder, "0000"), exist_ok=True)
+    rng = random.Random(0)
+    dups = np.array([(i, rng.randrange(3)) for i in range(len(texts))], dtype=[("doc", "<u4"), ("sent", "<u2")])
+    dups.tofile(os.path.join(folder, "0000", "00000.c4_dup"))
+    return lambda: sum(1 for _ in cls(folder, config=dtsd.SentDedupConfig(), **LANG).run(_docs(texts)))
+
+
 def c4_ok(texts):
     """The docs datatrove's own C4 doesn't raise on (some Indic sentence splits do, Urdu without urduhack)."""
     step = dt.C4QualityFilter(**LANG)
@@ -146,6 +172,11 @@ def main():
     for name in STATS:
         rows.append((f"{name} (run)", texts, stats_run(getattr(dts, name), texts, tmp), stats_run(getattr(rss, name), texts, tmp)))
     rows += [(name, texts, p, r) for name, p, r in ngram_steps(texts, tmp)]
+    s1 = sentdedup_stage1(dtsd.SentenceDedupSignature, texts, tmp), sentdedup_stage1(RsSentSig, texts, tmp)
+    rows.append(("SentenceDedup stage 1 (run)", texts, *s1))
+    sd_texts = span_safe(texts, LANG.get("language", "eng"))
+    s3 = sentdedup_stage3(dtsd.SentenceDedupFilter, sd_texts, tmp), sentdedup_stage3(RsSentFilter, sd_texts, tmp)
+    rows.append(("SentenceDedup stage 3 (run, 1 dup/doc)", sd_texts, *s3))
 
     print(f"{n} docs, {mb:.1f} MB, median of {reps}, language {LANG.get('language', 'default')}")
     print(f"C4 and the chain run on the {len(c4_texts)} docs datatrove's C4 doesn't raise on\n")

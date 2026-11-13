@@ -3,6 +3,7 @@
 mod badwords;
 mod cjk;
 mod cluster;
+mod dedup;
 mod ftfy_check;
 mod minhash;
 mod ngram_steps;
@@ -276,10 +277,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGopherRepetition>()?;
     m.add_class::<PyFineWebQuality>()?;
     m.add_class::<PyC4Quality>()?;
-    m.add_class::<minhash::PyMinHasher>()?;
+    dedup::register(m)?;
     m.add_class::<warc::PyWarcRecords>()?;
     m.add_class::<url::PyUrlLists>()?;
-    m.add_class::<cluster::PyMinhashCluster>()?;
     m.add_class::<pii::PyPii>()?;
     m.add_class::<badwords::PyBadWords>()?;
     m.add_class::<ftfy_check::PyFtfyCheck>()?;

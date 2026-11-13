@@ -3,15 +3,17 @@
 [![PyPI](https://img.shields.io/pypi/v/datatrove-rs.svg)](https://pypi.org/project/datatrove-rs/)
 [![Python versions](https://img.shields.io/pypi/pyversions/datatrove-rs.svg)](https://pypi.org/project/datatrove-rs/)
 [![CI](https://github.com/Hexay/datatrove-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Hexay/datatrove-rs/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/Hexay/datatrove-rs/blob/master/LICENSE)
 
-Rust implementations of the hot steps in [datatrove](https://github.com/huggingface/datatrove) pipelines, with
-**byte-identical output**. Turn it on with one environment variable, keep your pipeline code as it is, and the
-FineWeb recipe runs about 5x faster.
+Rust implementations of the slow steps in [datatrove](https://github.com/huggingface/datatrove) pipelines. Each one
+subclasses the datatrove step, takes the same arguments and produces the same output: keep/drop decisions, drop
+reasons, rewritten text, stats, and MinHash, sentence-dedup and Bloom filter files. Set `DATATROVE_RS=1` and an
+unchanged pipeline uses them.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Hexay/datatrove-rs/master/docs/assets/fineweb-speed.svg"
-       alt="FineWeb recipe on 5,000 Common Crawl pages: datatrove 87.7 s, datatrove-rs 17.3 s" width="720">
+       alt="Wall time, LocalPipelineExecutor with 1 task. FineWeb recipe on 5,000 Common Crawl pages: datatrove 113.1 s, datatrove-rs 13.0 s (8.7x). FineWeb-2 German, quality filters and MinHash signatures on 4,000 documents: datatrove 32.4 s, datatrove-rs 0.97 s (33x). Output identical."
+       width="720">
 </p>
 
 ## Installation
@@ -20,23 +22,22 @@ FineWeb recipe runs about 5x faster.
 pip install "datatrove-rs[trafilatura]"
 ```
 
-The `[trafilatura]` extra adds [trafilatura-rs](https://github.com/Hexay/trafilatura-rs) for HTML extraction, which
-is where most of the recipe's time goes. Leave the extra off to accelerate only the filters and MinHash.
+The `[trafilatura]` extra adds [trafilatura-rs](https://github.com/Hexay/trafilatura-rs) for the `Trafilatura`
+extractor, the most expensive step of the FineWeb recipe. Without it, every other step below is still accelerated.
 
-Requires Python 3.10+ and datatrove `>=0.10.1,<0.11`. Wheels are built for Linux, macOS and Windows.
+Requires Python 3.10+ and datatrove `>=0.10.1,<0.11`. Wheels (abi3) are built for Linux x86_64/aarch64, macOS
+x86_64/arm64 and Windows x64.
 
 ## Quickstart
-
-Your existing pipeline, unchanged:
 
 ```bash
 DATATROVE_RS=1 python my_pipeline.py
 ```
 
-That's it. Any step datatrove-rs covers runs in Rust; every other step runs datatrove's own code. The switch also
-reaches executor worker processes.
+Covered steps run in Rust; every other step runs datatrove's code. Executor workers inherit the variable, and
+pickled steps refer to the `datatrove_rs` classes, so local and Slurm workers get the same steps either way.
 
-Prefer it in code? Either of these works too:
+In code:
 
 ```python
 import datatrove_rs
@@ -46,81 +47,113 @@ datatrove_rs.patch()  # datatrove's own imports now return the Rust-backed steps
 from datatrove_rs.pipeline.filters import GopherQualityFilter, URLFilter
 ```
 
-You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py`.
+`python -m datatrove_rs my_pipeline.py` runs a script with the patch applied.
 
-## What's accelerated
+## What's covered
 
-| datatrove step | Speedup | Notes |
-|---|---:|---|
-| `extractors.Trafilatura` | ~7x | via trafilatura-rs, with the `[trafilatura]` extra |
-| `filters.GopherRepetitionFilter` | 87x | |
-| `filters.GopherQualityFilter` | 79x | |
-| `filters.C4QualityFilter` | 49x | |
-| `filters.FineWebQualityFilter` | 86x | |
-| `dedup.MinhashDedupSignature` | 48x | MinHash stage 1 |
-| `dedup.MinhashDedupCluster` | 14-24x | MinHash stage 3; 2.7-3.3x less peak memory |
-| `dedup.SingleBloomFilter` | 38x | `step()`; 30x German, 20x Chinese; same saved bloom file |
-| `decont.NGramsDecontFilter` | 43x | 35x German, 16x Chinese; `NGramsDecontIndexer.compute_hashes` too |
-| `filters.UnigramLogProbFilter` | 75x | 50x German, 27x Chinese |
-| `dedup.SentenceDedupSignature` | 65x | sentence dedup stage 1; 52x German, 24x Chinese, 4x Hindi; same signature files |
-| `dedup.SentenceDedupFilter` | 119x | stage 3; 83x German, 38x Chinese, 1.8x Hindi; Thai/Urdu sentences stay Python |
-| `formatters.PIIFormatter` | 9-16x | |
-| `formatters.FTFYFormatter` | 21-34x | skips ftfy where it provably changes nothing; the rest still runs ftfy |
-| `filters.C4BadWordsFilter` | 13x | |
-| `readers.WarcReader` | ~2.2x | gzip WARCs; charset detection stays in Python |
-| `filters.URLFilter` | ~7x | mostly blocklist loading and tldextract setup |
-| `filters.LanguageFilter` | ~1.3x | the rest is fastText's own C++ inference |
-| `stats.WordStats` | 24-32x | full `run()`, all four groups; 20-31x German/Chinese, 2x Hindi |
-| `stats.SentenceStats` | 50x | 54x German, 28x Chinese, 2.5x Hindi; Thai/Urdu sentences stay Python |
-| `stats.DocStats` | 8x | |
-| `stats.LineStats`, `stats.ParagraphStats` | 3-4x | mostly the per-group bookkeeping |
+| datatrove step | English | Other languages | Notes |
+|---|---:|---|---|
+| `extractors.Trafilatura` | 9.8x | | step time inside the FineWeb recipe; needs the `[trafilatura]` extra |
+| `readers.WarcReader` | 2.2x [#1] | | gzip WARCs; charset detection stays in Python |
+| `filters.URLFilter` | 7x [#1] | | mostly blocklist loading and tldextract setup |
+| `filters.LanguageFilter` | 1.3x [#1] | | the rest is fastText's own inference |
+| `filters.GopherRepetitionFilter` | 79x | | |
+| `filters.GopherQualityFilter` | 65x | | |
+| `filters.C4QualityFilter` | 58x | | |
+| `filters.FineWebQualityFilter` | 77x | | |
+| the four filters, chained | 68x | de 53x [#3], zh 33x, ja 4.5x [#5], vi 31x, th 8.9x, hi 16x [#6] | |
+| `dedup.MinhashDedupSignature` | 47x | de 45x [#3], zh 28x, ja 4.2x [#5], vi 40x, th 5.3x, hi 5.7x [#6] | MinHash stage 1 |
+| `dedup.MinhashDedupCluster` | 14-24x [#2] | | MinHash stage 3, CPU time on 37M pairs; peak RSS 350 MB vs 829-1,015 MB |
+| `dedup.SentenceDedupSignature` | 69x | de 52x, zh 24x, hi 4.1x [#9] | sentence dedup stage 1 |
+| `dedup.SentenceDedupFilter` | 105x | de 83x, zh 38x, hi 1.8x [#9] | sentence dedup stage 3 |
+| `dedup.SingleBloomFilter` | 37x | de 30x, zh 20x [#8] | `step()` |
+| `decont.NGramsDecontFilter` | 53x | de 35x, zh 16x [#8] | `NGramsDecontIndexer.compute_hashes` too |
+| `filters.UnigramLogProbFilter` | 60x | de 50x, zh 27x [#8] | |
+| `formatters.PIIFormatter` | 16x [#2] | FineWeb-2 9x [#2] | |
+| `formatters.FTFYFormatter` | 34x [#2] | FineWeb-2 21x [#2] | skips ftfy where it provably changes nothing |
+| `filters.C4BadWordsFilter` | 13x [#2] | FineWeb-2 13x [#2] | |
+| `stats.WordStats` | 27x | de 31x, zh 20x, hi 2.0x [#7] | full `run()`; datatrove 0.10.1 only |
+| `stats.SentenceStats` | 43x | de 54x, zh 28x, hi 2.5x [#7] | datatrove 0.10.1 only |
+| `stats.DocStats` | 6x | de 8x, zh 3.6x, hi 3.6x [#7] | datatrove 0.10.1 only |
+| `stats.LineStats`, `stats.ParagraphStats` | 2-3x | 1.5-3.9x [#7] | mostly per-group bookkeeping; datatrove 0.10.1 only |
 
-Filters and MinHash stage 1 run in Rust for the 57 languages spaCy tokenizes with rules (English plus German,
-French, Spanish, Russian, Italian, Portuguese, Polish, Dutch, Turkish, Indonesian and 46 more), with 53-88x on the
-four-filter chain in the ten largest, and for Chinese (jieba, 33x on the chain, 28x MinHash) and Japanese (SudachiPy,
-4.5x: Sudachi's own analysis, already Rust in SudachiPy, dominates both sides). They also run for Vietnamese (pyvi,
-31x chain, 40x MinHash), Thai (pythainlp newmm, 9x chain, 5x MinHash) and every language datatrove gives the Indic NLP
-tokenizer (16 tokenizers behind 129 language keys, Hindi, Bengali, Tamil, Urdu and more: 14-18x chain, 4-6x MinHash).
-Korean (Kiwi, a C++ morphological analyzer) and Stanza languages stay on datatrove's code. Filter and MinHash
-speedups are single-thread throughput on 1,000 FineWeb or FineWeb-2 documents. Trafilatura's is inside the
-full pipeline; reader, URL and language numbers are CPU time on 5,000 Common Crawl records. MinHash stage 3 is CPU
-time on 37M duplicate pairs over 4.5M documents (default flags / with cluster ids and sizes); the formatters and
-C4BadWordsFilter on 12,000 FineWeb and 12,000 FineWeb-2 documents. Full numbers and method:
-[docs/fineweb-profile.md](docs/fineweb-profile.md).
+Unmarked numbers were measured on 2026-11-13 with 0.1.5 (see Benchmarks below). Numbers marked with a
+pull request come from the results recorded in it: single-thread throughput on 500-1,000 FineWeb or FineWeb-2
+documents, except `WarcReader`, `URLFilter` and `LanguageFilter` (CPU time on 5,000 Common Crawl records) and
+`MinhashDedupCluster`.
 
-Each replacement subclasses the datatrove step, takes the same arguments and produces the same results: keep/drop
-decisions, drop reasons, rewritten text, stats, MinHash signature and cluster files, and Bloom filter files. Pickled pipelines work on Slurm and
-local multiprocessing workers whether or not the worker patched.
+[#1]: https://github.com/Hexay/datatrove-rs/pull/1
+[#2]: https://github.com/Hexay/datatrove-rs/pull/2
+[#3]: https://github.com/Hexay/datatrove-rs/pull/3
+[#5]: https://github.com/Hexay/datatrove-rs/pull/5
+[#6]: https://github.com/Hexay/datatrove-rs/pull/6
+[#7]: https://github.com/Hexay/datatrove-rs/pull/7
+[#8]: https://github.com/Hexay/datatrove-rs/pull/8
+[#9]: https://github.com/Hexay/datatrove-rs/pull/9
 
-## Exactness
+The steps that tokenize (filters, MinHash stage 1, stats, sentence dedup, Bloom, decontamination, unigram) run in
+Rust for:
 
-Output equality with datatrove is the product, so every change is checked against unmodified datatrove:
+- the 57 languages spaCy tokenizes with rules (English, German, French, Spanish, Russian, Italian, Portuguese,
+  Polish, Dutch, Turkish, Indonesian, 45 more, and the multi-language `xx`);
+- Chinese (jieba) and Japanese (SudachiPy);
+- Vietnamese (pyvi), Thai (pythainlp `newmm`), and the 16 Indic NLP tokenizers datatrove uses for 129 language
+  keys (Hindi, Bengali, Tamil, Urdu and more).
 
-- **Filters and MinHash:** 10,500 real, perturbed and fuzzed documents across 26 configurations, 0 mismatches, plus
-  81,825 FineWeb-2 and fuzzed documents across the 56 other languages, 33,205 in Chinese and Japanese and 44,300 in
-  Vietnamese, Thai and the 16 Indic tokenizers. The tokenizers match datatrove's on 153M tokens in 57 spaCy
-  languages, 21.4M Chinese and Japanese tokens and 58.3M Vietnamese, Thai and Indic tokens.
-- **Stats steps:** per-task and merged stats files, per-doc metadata and step stats byte-identical on 10,500
-  English documents across 13 configurations and 23,125 documents in 13 other languages.
-- **Bloom filter, decontamination, unigram log-probs:** decisions, stats, metadata and the saved bloom file
-  identical on 4,000 FineWeb documents plus 7,000 perturbed, fuzzed and duplication-heavy ones (with datatrove's own
-  unigram table), and 9,000 FineWeb-2 documents plus 13,950 derived ones in 9 languages, across 18 configurations.
-- **Sentence dedup:** signature files, stage 2 duplicates, kept and removed docs and stats byte-identical on 22,000
-  English documents and 58,500 in 13 other languages, across 6 configurations.
-- **Trafilatura:** 10,666 of 10,666 Common Crawl pages identical (see trafilatura-rs).
-- **End to end:** the FineWeb recipe gives identical output on 5,000 Common Crawl records.
+## What stays on datatrove's code
 
-When the Rust path can't guarantee identical results, the step falls back to datatrove's own code for that case.
-This applies to languages without a Rust tokenizer (Korean, Stanza languages), to Chinese without
-jieba 0.42.1 and Japanese without SudachiPy 0.7.0 and SudachiDict-core installed, to pythainlp, indic-nlp-library or
-pyvi at other versions than the ported ones, to sentence counts the ports don't reproduce, to the stats steps on datatrove releases other than 0.10.1, to sentence dedup when datatrove's reproduced methods
-change or a subclass overrides them, and to Trafilatura options
-trafilatura-rs doesn't cover. Details and
-reproduced quirks are in [docs/parity.md](docs/parity.md).
+- Korean (Kiwi), Stanza languages, and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers.
+- Thai and Urdu sentence splitting: `SentenceStats` and sentence dedup run datatrove's code for them (Thai sentence
+  dedup in line mode runs in Rust).
+- `FTFYFormatter`'s fixes. Rust only proves that ftfy would leave a document unchanged and then skips ftfy; every
+  other document goes through ftfy.
+- Any step whose dependency is at an unverified version (see below), a subclass that overrides a reproduced
+  method, a document with lone surrogates, and options outside the reproduced set (Trafilatura options
+  trafilatura-rs doesn't support, non-default PII patterns, `URLFilter` without the integrated lists, and so on).
+
+The fallback is per language, per document or per step, decided at run time. The full list, per step, is in
+[docs/parity.md](https://github.com/Hexay/datatrove-rs/blob/master/docs/parity.md).
+
+## Exactness and version guards
+
+Each step is checked against unmodified datatrove in the same environment: per-document results, rewritten text,
+`run()` stats, exclusion-writer documents and output files, compared byte for byte on real FineWeb and FineWeb-2
+documents plus perturbed and fuzzed ones in every covered language. Both pipelines in the chart give identical
+output. Corpora, configurations and results: [docs/parity.md](https://github.com/Hexay/datatrove-rs/blob/master/docs/parity.md).
+
+Where output depends on another library's version, the installed version is checked at run time, and on a
+mismatch the affected step or language runs datatrove's code:
+
+| Dependency | Rust path only when |
+|---|---|
+| datatrove | 0.10.1 for the stats steps; sentence dedup checks a fingerprint of the datatrove methods it reproduces |
+| jieba | 0.42.1 |
+| SudachiPy | 0.7.0 with SudachiDict-core installed |
+| pyvi, pythainlp, indic-nlp-library | 0.1.1, 5.4.0, 0.92, or not installed |
+| trafilatura, lxml | a pair trafilatura-rs reproduces |
+| tldextract | 5.4.x (otherwise only the host split goes through tldextract) |
+| ftfy | 6.x (otherwise ftfy always runs) |
+
+Two things are not checked. The spaCy rules were exported from spaCy 3.8.18 and are tested on spaCy 3.8; the
+installed spaCy version is not read. The Unicode tables come from Python 3.13 (Unicode 15.1); on another Unicode
+version the package warns on import, since results could differ on rare characters.
+
+## Benchmarks
+
+The chart comes from `tools/recipe_bench.py`, which runs each pipeline through `LocalPipelineExecutor` (1 task),
+alternating datatrove and datatrove-rs runs and comparing output digests. `tools/make_chart.py` draws it from
+the raw runs in [docs/assets/fineweb-speed.json](https://github.com/Hexay/datatrove-rs/blob/master/docs/assets/fineweb-speed.json).
+The 2026-11-13 runs were on a shared 16-CPU machine at load average 8-36. Each run is single-threaded, its CPU
+time is within 4% of its wall time, and no run was memory-throttled.
+
+The per-step table comes from `tools/bench.py` (single thread, the step alone on the same documents, median of
+3). Per-language tables and older profiling are in
+[docs/fineweb-profile.md](https://github.com/Hexay/datatrove-rs/blob/master/docs/fineweb-profile.md) and the
+linked pull requests.
 
 ## Contributing
 
-Development setup, the parity harness, benchmarks and releasing: [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup, the parity harness, benchmarks and releasing: [CONTRIBUTING.md](https://github.com/Hexay/datatrove-rs/blob/master/CONTRIBUTING.md).
 
 ## License
 

@@ -6,10 +6,11 @@ use crate::cjk_words::{self, Cjk};
 use crate::pystr::{char_len, strip};
 use crate::pyunicode::py;
 pub use crate::wordtok::SentenceCount;
-use crate::wordtok::{self, Splitter, Src};
+use crate::wordtok::{self, simple_span_ends, Splitter, Src};
 pub use spacy_tokenizer_rs::languages;
 use spacy_tokenizer_rs::specials::Span;
 use spacy_tokenizer_rs::{tokenizer, Backend, State, Tokenizer};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
@@ -145,18 +146,51 @@ impl Words {
         Some(out)
     }
 
-    /// Code-point lengths of `sent_tokenize(text)` (datatrove strips each sentence and drops empty ones), or None
-    /// when Rust has no sentence splitter for this tokenizer.
-    pub fn sentence_lengths(&mut self, text: &str) -> Option<Vec<usize>> {
+    /// True unless the tokenizer is a `wordtok` port whose sentences aren't ported (Thai, Urdu).
+    pub fn has_sentences(&self) -> bool {
+        self.engine.final_words().is_none_or(|s| s.has_sentences())
+    }
+
+    /// `sent_tokenize(text)`: each sentence's text, stripped, empties dropped. None unless `has_sentences`.
+    /// Where datatrove's tokenizer raises, empty (the caller's `cjk_words::take_failure` check reports it).
+    pub fn sentence_texts<'a>(&mut self, text: &'a str) -> Option<Vec<Cow<'a, str>>> {
         if let Some(s) = self.engine.final_words() {
-            return s.sentence_lengths(text);
+            return Some(s.sentences(text)?.into_iter().map(Cow::Owned).collect());
         }
-        let ok = self.tokenize(text);
+        let spans = self.sentence_byte_spans(text)?;
+        Some(spans.into_iter().map(|(a, b)| strip(&text[a..b])).filter(|s| !s.is_empty()).map(Cow::Borrowed).collect())
+    }
+
+    /// Code-point lengths of `sent_tokenize(text)`; None unless `has_sentences`.
+    pub fn sentence_lengths(&mut self, text: &str) -> Option<Vec<usize>> {
+        Some(self.sentence_texts(text)?.iter().map(|s| char_len(s)).collect())
+    }
+
+    /// `span_tokenize(text)`'s end offsets, in chars. None unless `has_sentences`, or where datatrove's
+    /// `simple_span_tokenize` raises.
+    pub fn sentence_ends(&mut self, text: &str) -> Option<Vec<usize>> {
+        if let Some(s) = self.engine.final_words() {
+            return simple_span_ends(text, &s.sentences(text)?);
+        }
+        let spans = self.sentence_byte_spans(text)?;
+        if self.docs.len() > 1 {
+            return Some(self.chunked_sentence_ends(text));
+        }
+        let (mut byte, mut chars) = (0, 0);
+        let ends = spans.into_iter().map(|(_, b)| {
+            chars += char_len(&text[byte..b]);
+            byte = b;
+            chars
+        });
+        Some(ends.collect())
+    }
+
+    /// Tokenizes `text` and returns the byte span of each spaCy `Span` in `doc.sents` (`start_char..end_char`),
+    /// over every chunk's doc. None if the tokens don't point into `text`.
+    fn sentence_byte_spans(&mut self, text: &str) -> Option<Vec<(usize, usize)>> {
+        self.tokenize(text);
         if self.src != Src::Text {
             return None;
-        }
-        if !ok {
-            return Some(Vec::new()); // the caller's `cjk_words::take_failure` check reports it
         }
         let whole = [(self.tokens.len(), 0)];
         let docs = if self.docs.len() > 1 { &self.docs[..] } else { &whole[..] };
@@ -166,11 +200,8 @@ impl Words {
             let toks = &self.tokens[first..last];
             sentence_starts(text, toks, &mut self.starts);
             for (k, &s) in self.starts.iter().enumerate() {
-                let end = self.starts.get(k + 1).map_or(toks.len(), |&e| e) - 1;
-                let sent = strip(&text[toks[s].0 as usize..toks[end].1 as usize]);
-                if !sent.is_empty() {
-                    out.push(char_len(sent));
-                }
+                let e = self.starts.get(k + 1).map_or(toks.len(), |&n| n) - 1;
+                out.push((toks[s].0 as usize, toks[e].1 as usize));
             }
             first = last;
         }

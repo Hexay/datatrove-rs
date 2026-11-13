@@ -63,6 +63,19 @@ Every check compares against datatrove running unmodified in the same environmen
   in German, Russian, French, Greek, Chinese, Japanese, Vietnamese, Thai and Hindi, with a table built from the
   corpus. `tests/test_ngram_steps.py` repeats it on fuzzed docs, and `check_language` runs per language in
   `test_languages.py`, `test_cjk.py` and `test_wordtok.py`.
+- Sentence dedup: `tools/parity.py --only SentDedup` runs stage 1 (`SentenceDedupSignature`), datatrove's stage 2
+  and stage 3 (`SentenceDedupFilter`) over the corpus split into 4 ranks, plus `--dup-docs` docs that share
+  sentences (`tools/sentdedup_fuzz.py`: exact copies, spliced sentence and line runs, short docs from a small pool,
+  Unicode and line-separator edges). It compares the signature files byte for byte, stage 1 stats, the stage 2
+  duplicate files, stage 3 output docs, stats and exclusion-writer docs on the real duplicates and on synthetic
+  duplicate files for half the docs, and `remove_dup_sentences` per doc on random indices (10% out of order, where
+  datatrove raises). Six configs: the default, line mode, n = 1/2/5, `min_words_to_remove_span`, zero and
+  near-zero `min_doc_words`/`min_num_sentences`, xxhash/sha1 at 32/64 bits, raw and date normalisation, 1-3
+  finder buckets. 0 mismatches in all 6 configs on 22,000 docs (12,000 FineWeb, 3,000 perturbed, 3,000 fuzzed,
+  4,000 sentence-sharing), and on 58,500 FineWeb-2 docs (2,000 real, 500 perturbed, 500 fuzzed, 1,000
+  sentence-sharing each, plus 500 script fuzz for Vietnamese, Thai and Indic) in German, French, Russian, Arabic,
+  Greek, Turkish, Chinese, Japanese (twice, once script-fuzzed), Vietnamese, Thai (line mode only), Hindi, Bengali
+  and Tamil. `tools/sentdedup_lang_parity.sh <fineweb2 dir> [n]` repeats it per language.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -162,6 +175,17 @@ Every check compares against datatrove running unmodified in the same environmen
   give the same `.remove`/`.clusters`/`.sizes` bytes and cluster ids. Stats are built by the same sequence of
   `MetricStats.update` float operations, in datatrove's key order. Python still lists, reads and writes the files
   through fsspec. A root reached only by `(x, x)` pairs raises `KeyError` like datatrove.
+- **Sentence dedup.** Stage 1 is `sent_tokenize` (each spaCy sentence's text, stripped; Indic `sentence_split`), or
+  `str.splitlines` in line mode, then `simplify_text` per sentence, `" ".join` per n-gram and the same hash
+  functions as MinHash. Rust sorts the (hash, doc, sent) records, so only datatrove's bucket split runs in Python; a
+  value that overflows numpy's `<u4`/`<u2` fields hands every tuple to datatrove's `save_hashes`, which raises as
+  datatrove does. Stage 3 reproduces `span_tokenize`'s end offsets (Japanese chunk drift included) and slices by
+  them, so the text after the last sentence is dropped as in datatrove; only the first sentence of a removed run is
+  restored by `min_words_to_remove_span`; an empty doc goes to the exclusion writer with `text=None`. Out-of-order
+  duplicate indices, `simple_span_tokenize` failures (Indic), Urdu and Thai sentences (not ported: Thai runs in
+  Rust only in line mode) and non-int `n_sentences` run datatrove's code. Both steps run only when datatrove's
+  `SentDedupConfig` and reproduced methods match a source fingerprint (`sentence_dedup.VERIFIED_SOURCE`, datatrove
+  0.10.1 to main as of 2026-11); otherwise they are datatrove's.
 - **PIIFormatter.** Rust `regex` and Python `re` agree on leftmost-first matches for these ASCII patterns; the
   email pattern's `\b` is checked separately with Python's `\w` table. IPv4 `is_global` comes from the running
   Python's `ipaddress` networks, evaluated once per interval between their bounds, and leading-zero rejection is
@@ -205,6 +229,10 @@ Every check compares against datatrove running unmodified in the same environmen
 - `utils/text.py` imports `regex` without declaring it (this package depends on `regex` for that reason).
 - The Python MinHash passes `str` to `xxhash`, which xxhash 4 rejects. The reference side needs `xxhash<4`; this
   package's MinHash is unaffected.
+- `SentenceDedupSignature(config=None)` raises `AttributeError` in 0.10.1 (`config.hash_config`); pass a
+  `SentDedupConfig`. Fixed on main.
+- `SentenceDedupFilter` hands the exclusion writer a doc with `text=None` when the doc is empty and has no
+  duplicates.
 - `importlib.metadata` is used without being imported, and `pipeline.dedup` requires `tokenizers`. For the latter,
   `datatrove_rs.MinhashDedupSignature` is imported lazily, so filter-only installs don't need `tokenizers`.
 - The Trafilatura step's 1 s wall-clock sandbox timeout makes the set of extracted docs load-dependent in datatrove

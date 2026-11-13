@@ -18,7 +18,7 @@ def settle_is_alpha_state(language="eng"):
 
 
 def digest(s: str | bytes) -> bytes:
-    return hashlib.blake2b(s.encode() if isinstance(s, str) else s, digest_size=16).digest()
+    return hashlib.blake2b(s.encode("utf-8", "surrogatepass") if isinstance(s, str) else s, digest_size=16).digest()
 
 
 def filter_outcome(step, text):
@@ -91,7 +91,8 @@ class RecordingWriter:
         self.log.append("exit")
 
     def write(self, doc, rank):
-        self.log.append((doc.id, digest(doc.text), rank, sorted(doc.metadata.items())))
+        text = None if doc.text is None else digest(doc.text)  # SentenceDedupFilter excludes empty docs as None
+        self.log.append((doc.id, text, rank, sorted(doc.metadata.items())))
 
 
 def run_results(step, texts, rank=0):

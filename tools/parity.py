@@ -5,7 +5,8 @@ Usage: parity.py <fineweb.parquet> [--real N] [--fuzz N] [--random-configs K] [-
 Per doc it compares the filter result (or raised exception type) and the resulting doc.text; then both steps'
 `run()` over the docs neither raises on, comparing output ids and texts, every stat field and what the exclusion writer
 receives. MinHash compares shingles and
-signatures per doc and the signature files `run()` writes. The datatrove side runs on W processes and is cached.
+signatures per doc and the signature files `run()` writes. Sentence dedup runs stages 1-2-3 over the corpus plus
+`--dup-docs` sentence-sharing docs (`sentdedup_ref.py`). The datatrove side runs on W processes and is cached.
 """
 
 import argparse
@@ -17,13 +18,18 @@ from importlib.metadata import version
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pyarrow.parquet as pq  # noqa: E402
 from datatrove.pipeline.dedup import minhash as dtm  # noqa: E402
+from datatrove.pipeline.dedup import sentence_dedup as dts  # noqa: E402
 
 from datatrove_rs import _core  # noqa: E402
 from datatrove_rs._base import rust_language  # noqa: E402
 from datatrove_rs.minhash import MinhashDedupSignature as RsMinhash  # noqa: E402
+from datatrove_rs.sentence_dedup import SentenceDedupFilter as RsSentFilter  # noqa: E402
+from datatrove_rs.sentence_dedup import SentenceDedupSignature as RsSentSig  # noqa: E402
 from fuzz import fuzz_docs, perturb  # noqa: E402
+from sentdedup_fuzz import dup_docs  # noqa: E402
+from sentdedup_ref import sentdedup_results, signature_diffs, span_safe  # noqa: E402
 from wordtok_fuzz import fuzz_docs as script_fuzz  # noqa: E402
-from parity_cases import FILTER_CASES, MINHASH_CASES, random_filter_cases  # noqa: E402
+from parity_cases import FILTER_CASES, MINHASH_CASES, SENTDEDUP_CASES, random_filter_cases  # noqa: E402
 from parity_ref import (  # noqa: E402
     cached,
     digest,
@@ -71,6 +77,26 @@ def check_minhash(name, cfg, texts, report, workers=1, cache_dir=None, language=
     return len(bad), ref["files"] == got["files"]
 
 
+def check_sentdedup(name, case, texts, report, workers=1, cache_dir=None, language="eng"):
+    """Returns (docs whose `remove_dup_sentences` differs, names of the other differing results)."""
+    key = ("sentdedup-v2", name, repr(case["config"]), case["finder_workers"], language, _corpus_key(texts))
+    ref = cached(cache_dir, key, lambda: sentdedup_results(
+        dts.SentenceDedupSignature, dts.SentenceDedupFilter, case, texts, language, workers))
+    got = sentdedup_results(RsSentSig, RsSentFilter, case, texts, language)
+    flat = [[o for part, _ in r["remove"] for o in part] for r in (ref, got)]
+    bad = [i for i, (a, b) in enumerate(zip(*flat)) if a != b]
+    differ = [k for k in ref if k != "remove" and ref[k] != got[k]]
+    if [s for _, s in ref["remove"]] != [s for _, s in got["remove"]]:
+        differ.append("remove stats")
+    for i in bad[:20]:
+        report.write(f"## {name} remove_dup_sentences doc {i}\npy={flat[0][i]!r}\nrs={flat[1][i]!r}\n"
+                     f"text={texts[i][:300]!r}\n")
+    if differ:
+        sig_docs = signature_diffs(dts.SentenceDedupSignature, RsSentSig, case, texts, language)
+        report.write(f"## {name} differs in {differ}; get_hashes differs on docs {sig_docs}\n")
+    return len(bad), differ
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("parquet")
@@ -84,7 +110,12 @@ def main():
     ap.add_argument("--out", default="parity_mismatches.txt")
     ap.add_argument("--language", default=None, help="datatrove language passed to every step (default: theirs)")
     ap.add_argument("--script-fuzz", type=int, default=0, help="extra wordtok_fuzz docs for a ported tokenizer")
+    ap.add_argument("--dup-docs", type=int, default=2000, help="extra sentence-sharing docs for sentence dedup")
+    ap.add_argument("--only", default=None, help="comma-separated case name prefixes to run (default: all)")
     args = ap.parse_args()
+
+    def selected(name):
+        return not args.only or name.startswith(tuple(args.only.split(",")))
 
     lang = {"language": args.language} if args.language else {}
     settle_is_alpha_state(args.language or "eng")
@@ -98,6 +129,8 @@ def main():
     failed = False
     with open(args.out, "w", encoding="utf-8") as report:
         for name, py_cls, rs_cls, kwargs in FILTER_CASES + random_filter_cases(args.random_configs):
+            if not selected(name):
+                continue
             t = time.perf_counter()
             bad, run_ok = check_filter(
                 name, py_cls, rs_cls, kwargs | lang, texts, report, args.workers, args.cache, args.run_limit
@@ -106,11 +139,25 @@ def main():
             verdict = "identical" if run_ok else "DIFFER"
             print(f"{name:32} mismatched docs {bad:5}   run()+stats {verdict:9} {time.perf_counter() - t:6.0f}s")
         for name, cfg in MINHASH_CASES:
+            if not selected(name):
+                continue
             t = time.perf_counter()
             bad, files_ok = check_minhash(name, cfg, texts, report, args.workers, args.cache, args.language or "eng")
             failed |= bool(bad) or not files_ok
             verdict = "identical" if files_ok else "DIFFER"
             print(f"{name:32} mismatched docs {bad:5}   sig files   {verdict:9} {time.perf_counter() - t:6.0f}s")
+        sd_lang = args.language or "eng"
+        if not RsSentSig(".", config=dts.SentDedupConfig(), language=sd_lang).rust():
+            print(f"note: no Rust sentence dedup for {sd_lang!r} (default config); datatrove is compared with itself")
+        sd_texts = span_safe(texts + dup_docs(real, args.dup_docs), args.language or "eng")
+        for name, case in SENTDEDUP_CASES:
+            if not selected(name):
+                continue
+            t = time.perf_counter()
+            bad, differ = check_sentdedup(name, case, sd_texts, report, args.workers, args.cache, args.language or "eng")
+            failed |= bool(bad or differ)
+            verdict = "identical" if not differ else "DIFFER " + ",".join(differ)
+            print(f"{name:32} mismatched docs {bad:5}   all stages  {verdict:9} {time.perf_counter() - t:6.0f}s")
     print(("FAIL, see " + args.out) if failed else "PASS")
     sys.exit(1 if failed else 0)
 

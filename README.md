@@ -62,6 +62,8 @@ You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py
 | `dedup.SingleBloomFilter` | 38x | `step()`; 30x German, 20x Chinese; same saved bloom file |
 | `decont.NGramsDecontFilter` | 43x | 35x German, 16x Chinese; `NGramsDecontIndexer.compute_hashes` too |
 | `filters.UnigramLogProbFilter` | 75x | 50x German, 27x Chinese |
+| `dedup.SentenceDedupSignature` | 65x | sentence dedup stage 1; 52x German, 24x Chinese, 4x Hindi; same signature files |
+| `dedup.SentenceDedupFilter` | 119x | stage 3; 83x German, 38x Chinese, 1.8x Hindi; Thai/Urdu sentences stay Python |
 | `formatters.PIIFormatter` | 9-16x | |
 | `formatters.FTFYFormatter` | 21-34x | skips ftfy where it provably changes nothing; the rest still runs ftfy |
 | `filters.C4BadWordsFilter` | 13x | |
@@ -103,13 +105,16 @@ Output equality with datatrove is the product, so every change is checked agains
 - **Bloom filter, decontamination, unigram log-probs:** decisions, stats, metadata and the saved bloom file
   identical on 4,000 FineWeb documents plus 7,000 perturbed, fuzzed and duplication-heavy ones (with datatrove's own
   unigram table), and 9,000 FineWeb-2 documents plus 13,950 derived ones in 9 languages, across 18 configurations.
+- **Sentence dedup:** signature files, stage 2 duplicates, kept and removed docs and stats byte-identical on 22,000
+  English documents and 58,500 in 13 other languages, across 6 configurations.
 - **Trafilatura:** 10,666 of 10,666 Common Crawl pages identical (see trafilatura-rs).
 - **End to end:** the FineWeb recipe gives identical output on 5,000 Common Crawl records.
 
 When the Rust path can't guarantee identical results, the step falls back to datatrove's own code for that case.
 This applies to languages without a Rust tokenizer (Korean, Stanza languages), to Chinese without
 jieba 0.42.1 and Japanese without SudachiPy 0.7.0 and SudachiDict-core installed, to pythainlp, indic-nlp-library or
-pyvi at other versions than the ported ones, to sentence counts the ports don't reproduce, to the stats steps on datatrove releases other than 0.10.1, and to Trafilatura options
+pyvi at other versions than the ported ones, to sentence counts the ports don't reproduce, to the stats steps on datatrove releases other than 0.10.1, to sentence dedup when datatrove's reproduced methods
+change or a subclass overrides them, and to Trafilatura options
 trafilatura-rs doesn't cover. Details and
 reproduced quirks are in [docs/parity.md](docs/parity.md).
 

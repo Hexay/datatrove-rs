@@ -7,6 +7,7 @@ mod indic_sents;
 mod thai;
 mod vi;
 
+use crate::pystr::char_len;
 use std::sync::OnceLock;
 
 /// Where `Splitter::split`'s spans point.
@@ -36,8 +37,14 @@ pub trait Splitter: Sync + Send {
         SentenceCount::Unknown
     }
 
-    /// Code-point lengths of `sent_tokenize(text)` for splitters whose sentences don't come from a spaCy `Doc`.
-    fn sentence_lengths(&self, _text: &str) -> Option<Vec<usize>> {
+    /// True when `sentences` is ported.
+    fn has_sentences(&self) -> bool {
+        false
+    }
+
+    /// `sent_tokenize(text)` (after `strip_strings`) for splitters whose sentences don't come from a spaCy `Doc`;
+    /// None unless `has_sentences`.
+    fn sentences(&self, _text: &str) -> Option<Vec<String>> {
         None
     }
 
@@ -54,6 +61,23 @@ const INDIC: [&str; 16] =
 /// Every Rust tokenizer name.
 pub fn names() -> impl Iterator<Item = String> {
     INDIC.iter().map(|l| format!("indic:{l}")).chain(["thai".to_owned(), "vi".to_owned()])
+}
+
+/// datatrove's `simple_span_tokenize(text, sents)` end offsets in chars; None where it raises (a sentence not
+/// found after the previous one).
+pub fn simple_span_ends(text: &str, sents: &[String]) -> Option<Vec<usize>> {
+    if sents.len() == 1 {
+        return Some(vec![char_len(text)]);
+    }
+    let mut ends = Vec::with_capacity(sents.len());
+    let (mut byte, mut chars) = (0, 0);
+    for s in sents {
+        let off = text[byte..].find(s.as_str())?;
+        chars += char_len(&text[byte..byte + off]) + char_len(s);
+        byte += off + s.len();
+        ends.push(chars);
+    }
+    Some(ends)
 }
 
 /// The splitter called `name`, built on first use.

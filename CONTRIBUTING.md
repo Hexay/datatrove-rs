@@ -43,6 +43,7 @@ crates/cjk-tokenizer/tools/parity.sh <zh|ja> <docs.bin>       # jieba/Sudachi po
 tools/cjk_fuzz.py <out.bin> <n> <zh|ja>                        # adversarial Chinese/Japanese docs
 tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]... # vi/Thai/Indic ports vs datatrove's tokenizers
 tools/stats_parity.py <parquet> [--language KEY]      # stats steps: files, merged files, metadata, stats
+tools/sentdedup_lang_parity.sh <fineweb2 dir> [n] [key:file]...     # sentence dedup stages 1-3 per language
 ```
 
 `tools/dev.sh parity` caches the datatrove side in `$DATATROVE_RS_PARITY_CACHE` (default

@@ -1,7 +1,7 @@
 //! `IndicNLPTokenizer.word_tokenize`: indic-nlp-library's `trivial_tokenize` (punctuation splitting, then the
 //! `pat_num_seq` number re-joining with its quirk of skipping a match at position 0).
 
-use super::indic_sents::{sentence_count, sentence_lengths};
+use super::indic_sents::{sentence_count, sentences};
 use super::{SentenceCount, Splitter, Src};
 use crate::pystr::strip;
 use rustc_hash::FxHashMap;
@@ -108,8 +108,12 @@ impl Splitter for Indic {
         sentence_count(text, self.lang)
     }
 
-    fn sentence_lengths(&self, text: &str) -> Option<Vec<usize>> {
-        (!self.urdu()).then(|| sentence_lengths(text, self.lang))
+    fn has_sentences(&self) -> bool {
+        !self.urdu()
+    }
+
+    fn sentences(&self, text: &str) -> Option<Vec<String>> {
+        self.has_sentences().then(|| sentences(text, self.lang))
     }
 }
 

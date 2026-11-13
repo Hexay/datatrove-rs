@@ -3,6 +3,7 @@
 import random
 
 from datatrove.pipeline import filters as dt
+from datatrove.pipeline.dedup.sentence_dedup import SentDedupConfig
 from datatrove.utils.hashing import HashConfig
 from datatrove.utils.text import TextNormConfig
 
@@ -32,6 +33,28 @@ MINHASH_CASES = [
         "norm_config": TextNormConfig(lowercase=False, remove_punctuation=False, norm_numbers=False),
     }),
     ("MinHash[3-gram,4x6]", {"n_grams": 3, "num_buckets": 4, "hashes_per_bucket": 6, "seed": 7}),
+]
+
+
+def _sd(finder_workers=1, **cfg):
+    return {"config": SentDedupConfig(**cfg), "finder_workers": finder_workers}
+
+
+SENTDEDUP_CASES = [
+    ("SentDedup", _sd()),
+    ("SentDedup[lines,n2,span5]", _sd(split_sentences=False, n_sentences=2, min_words_to_remove_span=5)),
+    ("SentDedup[n1,no mins,sha1-32,3 finders]", _sd(
+        3, n_sentences=1, min_doc_words=0, min_num_sentences=0, hash_config=HashConfig(precision=32, hash_fc="sha1"),
+    )),
+    ("SentDedup[n5,span20,xxhash32,raw]", _sd(
+        n_sentences=5, min_words_to_remove_span=20, hash_config=HashConfig(precision=32, hash_fc="xxhash"),
+        norm_config=TextNormConfig(lowercase=False, remove_punctuation=False, norm_numbers=False),
+    )),
+    ("SentDedup[n2,10 words,1 sent,sha1-64,dates]", _sd(
+        n_sentences=2, min_doc_words=10, min_num_sentences=1, hash_config=HashConfig(precision=64, hash_fc="sha1"),
+        norm_config=TextNormConfig(norm_weekdays=True, norm_monthnames=True),
+    )),
+    ("SentDedup[lines,n3,2 finders]", _sd(2, split_sentences=False)),
 ]
 
 

@@ -1,0 +1,2298 @@
+{
+ "date": "2026-11-13",
+ "cpus": 16,
+ "reps": 5,
+ "versions": {
+  "python": "3.13.17",
+  "datatrove": "0.10.1",
+  "datatrove_rs": "0.1.5",
+  "trafilatura_rs": "0.1.9",
+  "spacy": "3.8.18"
+ },
+ "scenarios": {
+  "fineweb": {
+   "runs": {
+    "pure": [
+     {
+      "wall": 95.03565103001893,
+      "cpu": 95.20548910699999,
+      "load": [
+       8.1015625,
+       9.19677734375
+      ],
+      "peak_rss_mb": 866.60546875,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 2.077598783595022,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 2.0264398115687072,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 78.5844173404912,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.6414362187788356,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 5.656173630821286,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.23312901725876145,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 2.1011303272098303,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 1.3703362808155362,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.09812662089825608,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 118.2452616780065,
+      "cpu": 117.30105247299998,
+      "load": [
+       9.31884765625,
+       21.1845703125
+      ],
+      "peak_rss_mb": 866.1875,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 2.132833362207748,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 1.8930425423313864,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 100.75163341753068,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.663530639722012,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 6.13893304640078,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.2588230877299793,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 2.4078520933690015,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 1.6131504539516754,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.105653921054909,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 114.16285859400523,
+      "cpu": 112.253878627,
+      "load": [
+       21.1845703125,
+       30.09375
+      ],
+      "peak_rss_mb": 866.51171875,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 2.1900344648747705,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 2.6071586930775084,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 96.00500229254249,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.8973447505559307,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 5.98859496996738,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.2535882329684682,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 2.2354310592636466,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 1.4923798060626723,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10168288470595144,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 110.12754167901585,
+      "cpu": 108.87965567699999,
+      "load": [
+       31.44287109375,
+       30.515625
+      ],
+      "peak_rss_mb": 866.859375,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 2.1494208192743827,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 2.492395566718187,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 92.41771722622798,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.857651339349104,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 5.868322200403782,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.2447784246178344,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 2.1818881419312675,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 1.4537626492092386,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.09834564322954975,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 113.06084386800649,
+      "cpu": 111.409409635,
+      "load": [
+       30.634765625,
+       29.146484375
+      ],
+      "peak_rss_mb": 866.1171875,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 2.148127895576181,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 2.6002176936599426,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 94.91748090428882,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.8673199349141214,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 6.02691535447957,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.25533459114376456,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 2.254625215602573,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 1.498448808095418,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10878186376066878,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     }
+    ],
+    "rs": [
+     {
+      "wall": 11.420006413012743,
+      "cpu": 11.551269985000001,
+      "load": [
+       9.26123046875,
+       9.14697265625
+      ],
+      "peak_rss_mb": 438.5078125,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 0.46078439080156386,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 0.20508664616500027,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 8.474147012078902,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 0.9838713169738185,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.2048558090464212,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.024814048170810565,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.04191830154741183,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.013916978292400017,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.09742574143456295,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 13.153984873002628,
+      "cpu": 13.287053332,
+      "load": [
+       9.61572265625,
+       9.31884765625
+      ],
+      "peak_rss_mb": 437.2890625,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 0.51506783804507,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 0.2425013500615023,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 9.919761197961634,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.071449581591878,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.22207927302224562,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.026955350302159786,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.04614753703936003,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.01393853296758607,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10309519193833694,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 12.639827309991233,
+      "cpu": 12.407711627,
+      "load": [
+       30.005859375,
+       29.77099609375
+      ],
+      "peak_rss_mb": 437.8984375,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 0.47858035159879364,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 0.2600115897075739,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 9.37505333055742,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.1195881536987145,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.2399495561257936,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.025176238123094663,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.04456593299983069,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.014877915644319728,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10222310197423212,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 13.146181477000937,
+      "cpu": 12.692581136,
+      "load": [
+       30.35009765625,
+       30.61083984375
+      ],
+      "peak_rss_mb": 435.9921875,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 0.4898232955019921,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 0.2629305873706471,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 9.816137895104475,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.1398202721320558,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.24522602031356655,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.025821493269177154,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.04445054510142654,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.013898926816182211,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10098754789214581,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     },
+     {
+      "wall": 12.97499841597164,
+      "cpu": 12.553686122,
+      "load": [
+       29.13427734375,
+       28.958984375
+      ],
+      "peak_rss_mb": 437.96484375,
+      "throttled": false,
+      "digest": "81ea4e5556c97d0c54378878c872d734cb37d1aa908e2552073a2adde1fdfcd2",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udd77 Warc",
+        "time": 0.48441787937190384,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 405571693,
+         "documents": 5000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\ude08 Url-filter",
+        "time": 0.2682905383699108,
+        "stats": {
+         "total": 5000,
+         "forwarded": 4956,
+         "doc_len": 403934341,
+         "dropped": 44,
+         "dropped_hard_blacklisted": 4,
+         "dropped_domain": 40
+        }
+       },
+       {
+        "name": "\ud83d\udee2 - EXTRAC: \u26cf Trafilatura",
+        "time": 9.666375412169145,
+        "stats": {
+         "total": 4956,
+         "extracted": 4956,
+         "forwarded": 4611,
+         "doc_len": 12013250,
+         "dropped": 345
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf0d Language ID",
+        "time": 1.1425147680856753,
+        "stats": {
+         "total": 4611,
+         "dropped": 3268,
+         "forwarded": 1343,
+         "doc_len": 3790008
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.248829602409387,
+        "stats": {
+         "total": 1343,
+         "forwarded": 1010,
+         "doc_len": 2427520,
+         "dropped": 333,
+         "dropped_dup_line_frac": 121,
+         "dropped_duplicated_5_n_grams": 48,
+         "dropped_top_3_gram": 45,
+         "dropped_dup_line_char_frac": 21,
+         "dropped_top_2_gram": 19,
+         "dropped_top_4_gram": 67,
+         "dropped_duplicated_7_n_grams": 3,
+         "dropped_duplicated_8_n_grams": 4,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_duplicated_9_n_grams": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.026126698590815067,
+        "stats": {
+         "total": 1010,
+         "forwarded": 651,
+         "doc_len": 1998199,
+         "dropped": 359,
+         "dropped_gopher_short_doc": 139,
+         "dropped_gopher_below_alpha_threshold": 191,
+         "dropped_gopher_too_many_bullets": 2,
+         "dropped_gopher_too_many_end_ellipsis": 21,
+         "dropped_gopher_enough_stop_words": 5,
+         "dropped_gopher_below_avg_threshold": 1
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.04384863888844848,
+        "stats": {
+         "line-total": 16797,
+         "line-kept": 5089,
+         "line-filter-no_terminal_punc": 11592,
+         "total": 651,
+         "forwarded": 451,
+         "doc_len": 1331557,
+         "dropped": 200,
+         "dropped_too_few_sentences": 200,
+         "line-filter-too_few_words": 94,
+         "line-filter-policy": 14,
+         "line-filter-javascript": 8
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.015061793936183676,
+        "stats": {
+         "total": 451,
+         "forwarded": 440,
+         "doc_len": 1272119,
+         "dropped": 11,
+         "dropped_line_punct_ratio": 2,
+         "dropped_char_dup_ratio": 9
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.10085334387258627,
+        "stats": {
+         "XXXXX.jsonl.gz": 440,
+         "total": 440,
+         "doc_len": 1272119
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "identical_output": true,
+   "median_wall": {
+    "pure": 113.06084386800649,
+    "rs": 12.97499841597164
+   },
+   "median_cpu": {
+    "pure": 111.409409635,
+    "rs": 12.553686122
+   }
+  },
+  "fineweb2": {
+   "runs": {
+    "pure": [
+     {
+      "wall": 31.178126612998312,
+      "cpu": 30.84825995,
+      "load": [
+       28.7216796875,
+       28.78759765625
+      ],
+      "peak_rss_mb": 247.16796875,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.021474498003954068,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 26.65350414637942,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 1.1682908081274945,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 1.109180645289598,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.8194511940528173,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.0491349148505833,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 31.150479044998065,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 30.927612742991187,
+      "cpu": 30.822344613000002,
+      "load": [
+       28.90673828125,
+       28.90771484375
+      ],
+      "peak_rss_mb": 247.8203125,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.023348429007455707,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 26.609667742653983,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 1.1764038430992514,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 1.10863370980951,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.8173773399321362,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.04801454982953146,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 30.90023724999628,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 32.41108287801035,
+      "cpu": 31.958876938,
+      "load": [
+       28.99560546875,
+       28.765625
+      ],
+      "peak_rss_mb": 247.05859375,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.022534704010467976,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 27.834167348628398,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 1.249930011748802,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 1.1629570266522933,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.8555987958388869,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.051424310920992866,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 32.38326948398026,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 32.63535773899639,
+      "cpu": 32.23540251400001,
+      "load": [
+       30.42236328125,
+       34.857421875
+      ],
+      "peak_rss_mb": 248.28125,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.027302887028781697,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 27.976119751139777,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 1.260668276809156,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 1.195882232132135,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.883591293997597,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.051854147954145446,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 32.60597770201275,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 39.78467179098516,
+      "cpu": 39.244629015,
+      "load": [
+       35.91015625,
+       34.390625
+      ],
+      "peak_rss_mb": 245.46875,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.034510655008489266,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 34.227167326112976,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 1.5851082458975725,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 1.3736244050378446,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.9994715838402044,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.05580186081351712,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 39.7575613539957,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     }
+    ],
+    "rs": [
+     {
+      "wall": 0.969211504998384,
+      "cpu": 0.936202858,
+      "load": [
+       28.72412109375,
+       28.72412109375
+      ],
+      "peak_rss_mb": 199.0,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.021298320993082598,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.5778695814078674,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.10281062292051502,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.02642086416017264,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.01161561391199939,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.04590377103886567,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 0.9346990149933845,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 0.9531222610094119,
+      "cpu": 0.9336038329999998,
+      "load": [
+       28.72412109375,
+       28.90673828125
+      ],
+      "peak_rss_mb": 198.70703125,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.02099121399805881,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.5693762885639444,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.10500600028899498,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.02765303000342101,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.011217589111765847,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.04749171985895373,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 0.9244125499972142,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 0.9576170590007678,
+      "cpu": 0.941275275,
+      "load": [
+       28.5439453125,
+       28.5439453125
+      ],
+      "peak_rss_mb": 199.07421875,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.018906481011072174,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.5795562043203972,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.10032040273654275,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.03186943894252181,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.01135550026083365,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.046621266956208274,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 0.9307752769964281,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 0.9732625120086595,
+      "cpu": 0.949579561,
+      "load": [
+       30.42236328125,
+       30.42236328125
+      ],
+      "peak_rss_mb": 198.9453125,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.0191442760406062,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.5846990694408305,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.10138798994012177,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.027732307265978307,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.011112029373180121,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.04851492293528281,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 0.9393542949983384,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     },
+     {
+      "wall": 1.2581288770015817,
+      "cpu": 1.1897059140000001,
+      "load": [
+       34.390625,
+       34.390625
+      ],
+      "peak_rss_mb": 199.73046875,
+      "throttled": false,
+      "digest": "cf2df112c94d5ffb387e9f9f9685b8e1dcee8aa01710f3c6cbd40eb351a6cd4c",
+      "steps": [
+       {
+        "name": "\ud83d\udcd6 - READER: \ud83d\udcd2 Parquet",
+        "time": 0.02145099497283809,
+        "stats": {
+         "input_files": 1,
+         "doc_len": 16023457,
+         "documents": 4000
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83d\udc6f Gopher Repetition",
+        "time": 0.7339320809405763,
+        "stats": {
+         "total": 4000,
+         "forwarded": 3959,
+         "doc_len": 15103103,
+         "dropped": 41,
+         "dropped_duplicated_7_n_grams": 2,
+         "dropped_duplicated_8_n_grams": 3,
+         "dropped_dup_line_frac": 8,
+         "dropped_top_4_gram": 6,
+         "dropped_duplicated_5_n_grams": 14,
+         "dropped_top_2_gram": 2,
+         "dropped_duplicated_6_n_grams": 3,
+         "dropped_top_3_gram": 3
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83e\udd47 Gopher Quality",
+        "time": 0.12643956317333505,
+        "stats": {
+         "total": 3959,
+         "dropped": 3793,
+         "dropped_gopher_below_alpha_threshold": 631,
+         "dropped_gopher_enough_stop_words": 3161,
+         "dropped_gopher_above_avg_threshold": 1,
+         "forwarded": 166,
+         "doc_len": 1384560
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \u26f0 C4 Quality",
+        "time": 0.03550596401328221,
+        "stats": {
+         "line-total": 8587,
+         "line-filter-no_terminal_punc": 5922,
+         "line-kept": 2600,
+         "total": 166,
+         "forwarded": 147,
+         "doc_len": 723034,
+         "dropped": 19,
+         "dropped_too_few_sentences": 19,
+         "line-filter-too_few_words": 63,
+         "line-filter-javascript": 2
+        }
+       },
+       {
+        "name": "\ud83d\udd3b - FILTER: \ud83c\udf77 FineWeb Quality",
+        "time": 0.016450096882181242,
+        "stats": {
+         "total": 147,
+         "forwarded": 141,
+         "doc_len": 696524,
+         "dropped": 6,
+         "dropped_char_dup_ratio": 6
+        }
+       },
+       {
+        "name": "\ud83d\udcbd - WRITER: \ud83d\udc3f Jsonl",
+        "time": 0.05534902776707895,
+        "stats": {
+         "XXXXX.jsonl.gz": 141,
+         "total": 141,
+         "doc_len": 696524
+        }
+       },
+       {
+        "name": "\ud83e\udec2 - DEDUP: \ud83c\udfaf MinHash stage 1",
+        "time": 1.192798567994032,
+        "stats": {
+         "total": 141
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "identical_output": true,
+   "median_wall": {
+    "pure": 32.41108287801035,
+    "rs": 0.969211504998384
+   },
+   "median_cpu": {
+    "pure": 31.958876938,
+    "rs": 0.941275275
+   }
+  }
+ }
+}

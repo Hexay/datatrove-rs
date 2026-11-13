@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "datatrove-rs"
 version = "0.1.5"
-description = "Drop-in Rust implementations of datatrove's hot pipeline steps: Gopher, C4, FineWeb filters and MinHash in 59 languages including Chinese and Japanese, plus readers, formatters and extraction"
+description = "Drop-in Rust implementations of datatrove pipeline steps with identical output: quality filters, MinHash, sentence dedup, stats, Bloom and decontamination for 57 spaCy languages plus Chinese, Japanese, Vietnamese, Thai and Indic; readers, formatters and extraction"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Hexay" }]
@@ -44,6 +44,8 @@ test = [
     # datatrove's WarcReader, URLFilter and LanguageFilter dependencies (+ fsspec HTTP for the lid model download)
     "warcio", "faust-cchardet", "python-magic", "tldextract", "pyahocorasick", "fasteners", "fasttext-numpy2-wheel",
     "requests", "aiohttp",
+    # JsonlWriter, for tools/recipe_bench.py
+    "orjson",
     # FTFYFormatter's unchanged-text check is built from ftfy's own regexes
     "ftfy>=6,<7",
     # datatrove's Chinese, Japanese, Thai, Indic and Vietnamese tokenizers, at the versions the Rust ports reproduce

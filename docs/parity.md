@@ -108,8 +108,10 @@ Every check compares against datatrove running unmodified in the same environmen
   maps to one of them. Their rules are exported from spaCy into `crates/spacy-tokenizer/data/rules/` by
   `export_rules.py`; case-insensitive patterns are rewritten to the exact code-point sets Python's `re` matches
   (`ignorecase.py`). Chinese, Japanese, Vietnamese, Thai and Indic have their own ports (below); Korean (Kiwi: a C++
-  morphological analyzer with a 105 MB language model, not reachable through kiwipiepy's abi3 wheel) and Stanza
-  languages run datatrove's Python code unchanged.
+  morphological analyzer with a 105 MB language model, not reachable through kiwipiepy's abi3 wheel), Stanza
+  languages and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers run datatrove's Python code
+  unchanged, as does a `SpaCyTokenizer` built with a non-default config. The rules come from spaCy 3.8.18 and
+  the Rust path does not check the installed spaCy version; parity is tested on spaCy 3.8.
 - **Vietnamese, Thai, Indic** (`crates/datatrove-core/src/wordtok`). Each port embeds data exported from one library
   version (`tools/export_wordtok.py`, `tools/export_vi.py`) and runs only when that library is absent or installed at
   that version (`python/datatrove_rs/_wordtok.py`: pythainlp 5.4.0, indic-nlp-library 0.92, pyvi 0.1.1).
@@ -148,8 +150,9 @@ Every check compares against datatrove running unmodified in the same environmen
 - **`run()`.** The filters override `run()` with an inlined copy of `BaseFilter.run()` whose stat bookkeeping is
   cheaper but bit-for-bit identical (`python/datatrove_rs/_run.py`). A subclass that overrides `filter`,
   `filter_batch`, `stat_update`, `update_doc_stats` or `track_time` gets datatrove's `run()` instead.
-- **Trafilatura.** Only `extract()` is replaced, so datatrove's sandbox, timeout and stats are unchanged. Configs
-  outside `trafilatura_rs.VERIFIED` run Python trafilatura for the whole step, so trafilatura's process-global dedup
+- **Trafilatura.** Only `extract()` is replaced, so datatrove's sandbox, timeout and stats are unchanged. Options
+  `trafilatura_rs.supports()` rejects, or an installed trafilatura/lxml pair that trafilatura-rs doesn't reproduce
+  (`trafilatura_rs.mismatched_versions()`), run Python trafilatura for the whole step, so trafilatura's process-global dedup
   cache never mixes the two engines.
 - **WarcReader.** Rust reproduces fsspec's gzip stream plus warcio's `ArchiveIterator` and datatrove's
   `process_record` for well-formed records (`crates/datatrove-core/src/warc`). A selected record datatrove might

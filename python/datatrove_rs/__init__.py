@@ -1,4 +1,4 @@
-"""Drop-in Rust implementations of datatrove steps; see README "Adopting" for the three ways to switch."""
+"""Drop-in Rust implementations of datatrove steps; see README "Quickstart" for the ways to switch."""
 
 from datatrove_rs import _mirror
 from datatrove_rs._base import check_unicode_tables

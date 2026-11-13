@@ -35,7 +35,7 @@ jobs:
           - { name: latest 0.10.x, spec: "datatrove>=0.10.1,<0.11" }
     steps:
       - uses: actions/checkout@v7
-      # The shipped Unicode tables were exported from Python 3.13 (README "Unicode tables").
+      # The shipped Unicode tables were exported from Python 3.13 (docs/parity.md, "Unicode tables").
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"

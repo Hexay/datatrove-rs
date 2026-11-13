@@ -1,19 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="148" viewBox="0 0 720 148" role="img" aria-label="FineWeb recipe, 5,000 Common Crawl pages">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="264" viewBox="0 0 720 264" role="img" aria-label="Wall time, lower is better. FineWeb recipe, 5,000 Common Crawl pages (WARC to filtered JSONL): datatrove 113.1 s, datatrove-rs 13.0 s  (8.7x faster); FineWeb-2 German, 4,000 documents (quality filters and MinHash signatures): datatrove 32.4 s, datatrove-rs 0.97 s  (33.4x faster).">
+<title>Wall time, lower is better. FineWeb recipe, 5,000 Common Crawl pages (WARC to filtered JSONL): datatrove 113.1 s, datatrove-rs 13.0 s  (8.7x faster); FineWeb-2 German, 4,000 documents (quality filters and MinHash signatures): datatrove 32.4 s, datatrove-rs 0.97 s  (33.4x faster).</title>
 <style>
-.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
-.s{fill:#52514e;font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
-.l{fill:#0b0b0b;font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
-.v{fill:#52514e;font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.ours{fill:#2a78d6}.other{fill:#b9b8b3}.axis{stroke:#898781;stroke-width:1}
-@media (prefers-color-scheme:dark){.t,.l{fill:#f0efec}.s,.v{fill:#c3c2b7}.ours{fill:#3987e5}.other{fill:#5c5b57}}
+.t{font:600 15px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.s{font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.g{font:600 13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.k{font:13px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.v{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.vo{font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.m{font:12px system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.t{fill:#0b0b0b}
+.g{fill:#0b0b0b}
+.vo{fill:#0b0b0b}
+.s{fill:#52514e}
+.k{fill:#52514e}
+.v{fill:#52514e}
+.m{fill:#898781}
+.ours{fill:#2a78d6}
+.other{fill:#898781}
+.axis{stroke:#c3c2b7}
+@media (prefers-color-scheme:dark){
+.t{fill:#f0efec}
+.g{fill:#f0efec}
+.vo{fill:#f0efec}
+.s{fill:#c3c2b7}
+.k{fill:#c3c2b7}
+.v{fill:#c3c2b7}
+.m{fill:#898781}
+.ours{fill:#3987e5}
+.other{fill:#6e6d68}
+.axis{stroke:#383835}
+}
 </style>
-<text class="t" x="0" y="20">FineWeb recipe, 5,000 Common Crawl pages</text>
-<text class="s" x="0" y="40">Wall time with datatrove's LocalPipelineExecutor, 1 task. Lower is better; output identical.</text>
-<line class="axis" x1="230" y1="56" x2="230" y2="144"/>
-<text class="l" x="220" y="79.5" text-anchor="end">datatrove</text>
-<path class="other" d="M230,62 h336.0 a4,4 0 0 1 4,4 v18 a4,4 0 0 1 -4,4 h-336.0 z"/>
-<text class="v" x="578.0" y="79.5">87.7 s</text>
-<text class="l" x="220" y="119.5" text-anchor="end" font-weight="600">datatrove-rs[trafilatura]</text>
-<path class="ours" d="M230,102 h63.06955530216648 a4,4 0 0 1 4,4 v18 a4,4 0 0 1 -4,4 h-63.06955530216648 z"/>
-<text class="v" x="305.06955530216646" y="119.5">17.3 s  (5.1x)</text>
+<text class="t" x="0.00" y="20">Same datatrove pipelines, same output, less time</text>
+<text class="s" x="0.00" y="40">Wall time with LocalPipelineExecutor, 1 task, median of 5 runs. Lower is better.</text>
+<line class="axis" x1="0.5" y1="78" x2="0.5" y2="232"/>
+<rect class="other" x="0" y="58" width="12" height="12" rx="2"/>
+<text class="k" x="18.00" y="69">datatrove</text>
+<rect class="ours" x="98" y="58" width="12" height="12" rx="2"/>
+<text class="k" x="116.00" y="69">datatrove-rs</text>
+<text class="g" x="0.00" y="94">FineWeb recipe, 5,000 Common Crawl pages (WARC to filtered JSONL)</text>
+<path class="other" d="M0.5,104 h652.90 a4,4 0 0 1 4,4 v12 a4,4 0 0 1 -4,4 h-652.90 z"/>
+<text class="v" x="665.40" y="118.5">113.1 s</text>
+<path class="ours" d="M0.5,128 h71.39 a4,4 0 0 1 4,4 v12 a4,4 0 0 1 -4,4 h-71.39 z"/>
+<text class="vo" x="83.89" y="142.5">13.0 s  (8.7x faster)</text>
+<text class="g" x="0.00" y="174">FineWeb-2 German, 4,000 documents (quality filters and MinHash signatures)</text>
+<path class="other" d="M0.5,184 h184.31 a4,4 0 0 1 4,4 v12 a4,4 0 0 1 -4,4 h-184.31 z"/>
+<text class="v" x="196.81" y="198.5">32.4 s</text>
+<path class="ours" d="M0.5,208 h2.82 a2.815630132642245,2.815630132642245 0 0 1 2.815630132642245,2.815630132642245 v14.368739734715511 a2.815630132642245,2.815630132642245 0 0 1 -2.815630132642245,2.815630132642245 h-2.82 z"/>
+<text class="vo" x="14.13" y="222.5">0.97 s  (33.4x faster)</text>
+<text class="m" x="0.00" y="256">Measured 2026-11-13 on 16 CPUs: datatrove 0.10.1, datatrove-rs 0.1.5, trafilatura-rs 0.1.9, Python 3.13.17.</text>
 </svg>

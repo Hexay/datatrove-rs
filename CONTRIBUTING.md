@@ -36,6 +36,8 @@ add `-e <path-to-datatrove>` to the install. After upgrading Python or `regex`, 
 ```bash
 tools/dev.sh parity <fineweb.parquet> ...             # large parity run, see docs/parity.md
 tools/dev.sh bench <fineweb.parquet> [n] [reps]       # docs/s per step vs datatrove
+tools/recipe_bench.py <out.json> [reps] [scenario...] # end-to-end pipelines via the executor (README chart)
+tools/make_chart.py <out.json> docs/assets/fineweb-speed.svg   # redraw the chart from those runs
 tools/icount.sh <docs.bin> <stage>...                 # instructions + cycles/doc per `profile` stage
 crates/spacy-tokenizer/tools/parity.sh <docs.bin>     # tokenizer vs spaCy, token spans
 crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: affixes, real and fuzzed docs

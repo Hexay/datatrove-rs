@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "datatrove-rs"
-version = "0.1.5"
+version = "0.1.6"
 description = "Drop-in Rust implementations of datatrove pipeline steps with identical output: quality filters, MinHash, sentence dedup, stats, Bloom and decontamination for 57 spaCy languages plus Chinese, Japanese, Vietnamese, Thai and Indic; readers, formatters and extraction"
 readme = "README.md"
 license = { text = "Apache-2.0" }

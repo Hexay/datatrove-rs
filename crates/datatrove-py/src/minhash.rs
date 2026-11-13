@@ -53,9 +53,10 @@ impl PyMinHasher {
     }
 
     /// Little-endian uint64 bytes of the shingle hashes.
-    fn shingles<'py>(&mut self, py: Python<'py>, text: &str) -> Bound<'py, PyBytes> {
+    fn shingles<'py>(&mut self, py: Python<'py>, text: &str) -> PyResult<Bound<'py, PyBytes>> {
         self.inner.shingles(text, &mut self.shingles);
-        PyBytes::new(py, &le_bytes(&self.shingles))
+        crate::cjk::check()?;
+        Ok(PyBytes::new(py, &le_bytes(&self.shingles)))
     }
 
     /// `get_signature`: `num_buckets` lists of hashes.

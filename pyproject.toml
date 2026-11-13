@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "datatrove-rs"
 version = "0.1.3"
-description = "Drop-in Rust implementations of datatrove's hot pipeline steps: Gopher, C4, FineWeb filters and MinHash in 57 languages, plus readers, formatters and extraction"
+description = "Drop-in Rust implementations of datatrove's hot pipeline steps: Gopher, C4, FineWeb filters and MinHash in 59 languages including Chinese and Japanese, plus readers, formatters and extraction"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Hexay" }]
@@ -46,6 +46,8 @@ test = [
     "requests", "aiohttp",
     # FTFYFormatter's unchanged-text check is built from ftfy's own regexes
     "ftfy>=6,<7",
+    # datatrove's Chinese and Japanese tokenizers, at the versions the Rust ports reproduce
+    "jieba==0.42.1", "sudachipy==0.7.0", "sudachidict-core",
 ]
 # Byte-exact Rust Trafilatura extractor; its own extra pins trafilatura/lxml to the versions it matches.
 trafilatura = ["trafilatura-rs[trafilatura]>=0.1.1,<0.2"]

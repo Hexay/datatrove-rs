@@ -7,6 +7,7 @@ description = "Bit-exact Rust ports of datatrove's Gopher, C4, FineWeb filters a
 
 [dependencies]
 spacy-tokenizer-rs = { path = "../spacy-tokenizer" }
+cjk-tokenizer-rs = { path = "../cjk-tokenizer" }
 hashbrown = { version = "0.17.1", default-features = false, features = ["inline-more"] }
 regex = { workspace = true }
 rustc-hash = { workspace = true }

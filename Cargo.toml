@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/spacy-tokenizer", "crates/datatrove-core", "crates/datatrove-py"]
+members = ["crates/spacy-tokenizer", "crates/cjk-tokenizer", "crates/datatrove-core", "crates/datatrove-py"]
 
 [workspace.dependencies]
 regex = "1.13"

@@ -30,7 +30,7 @@ def test_minhash_parity(name, cfg):
 
 
 def test_unported_tokenizers_fall_back_to_python():
-    for language in ("cmn", "jpn", "kor"):
+    for language in ("kor", "vie", "tha"):
         assert rs.GopherQualityFilter(language=language).rust() is None
 
 

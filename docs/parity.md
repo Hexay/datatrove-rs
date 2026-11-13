@@ -27,6 +27,12 @@ Every check compares against datatrove running unmodified in the same environmen
 - All 57 rule-based spaCy languages pass with 0 differences: 25.9M affix strings, 221,112 real docs (134.7M tokens,
   ~218,000 of them FineWeb-2 in 56 languages) and 171,000 fuzzed docs (18.6M tokens). `tools/parity.py --language
   <code>` then gives 0 filter and MinHash mismatches in all 56 non-English languages (81,825 docs, 50,100 real).
+- Chinese and Japanese: `crates/cjk-tokenizer/tools/parity.sh <zh|ja> <docs.bin>` compares doc token spans with
+  datatrove's own `SpaCyTokenizer`. 0 differences on 13,892 FineWeb-2 Chinese docs (cmn, wuu, yue, hak; 10.7M
+  tokens), 8,000 Japanese docs (6.65M tokens) and 3,000 fuzzed docs per language (`tools/cjk_fuzz.py`; 200 Japanese
+  ones span several 40,000-byte chunks). `tools/parity.py --language cmn_Hani|jpn_Jpan` on those corpora gives 0
+  filter and MinHash mismatches: 22,184 Chinese and 11,021 Japanese docs, all 18 configs. `tests/test_cjk.py`
+  repeats a small version in CI.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -58,8 +64,25 @@ Every check compares against datatrove running unmodified in the same environmen
   rule-based spaCy languages (`datatrove_rs._core.spacy_languages()`), which covers every language code datatrove
   maps to one of them. Their rules are exported from spaCy into `crates/spacy-tokenizer/data/rules/` by
   `export_rules.py`; case-insensitive patterns are rewritten to the exact code-point sets Python's `re` matches
-  (`ignorecase.py`). Languages with other tokenizers (Chinese, Japanese, Vietnamese, Korean, Thai, Indic and
-  others) run datatrove's Python code unchanged.
+  (`ignorecase.py`). Languages with other tokenizers (Vietnamese, Korean, Thai, Indic and others) run datatrove's
+  Python code unchanged.
+- **Chinese.** datatrove's `SpaCyTokenizer("zh")` is spaCy's Chinese tokenizer with `segmenter="jieba"`:
+  `jieba.cut(text, HMM=True)` then `util.get_words_and_spaces`. It covers every key datatrove maps to it (`cmn`,
+  `zh_Hani`, `yue`, `wuu_Hani`, `hak_Hani`, `nan_Hani`, `zho_Hani`, ...); note that bare `"zh"` maps to spaCy `xx`
+  and `"zho"` to the whitespace tokenizer in datatrove's table, and `lzh` is Stanza. jieba-rs is not exact (it keeps
+  ASCII runs like `Booking.com` and `e-mail` whole, which jieba's HMM splits; 29-46% of FineWeb-2 docs differ), so
+  `crates/cjk-tokenizer/src/jieba` ports jieba 0.42.1's `cut` (DAG, `calc` with Python's tuple tie-breaks, the
+  finalseg Viterbi). Its data is jieba's live `dt.FREQ`/`total` and `finalseg` tables, read once per process when
+  the first Chinese step builds (`python/datatrove_rs/cjk.py`), so words a program adds to jieba before that are
+  honoured and later changes are not. Needs jieba 0.42.1 installed, as datatrove does.
+- **Japanese.** datatrove's `SpaCyTokenizer("ja")` splits text with `chunk_text_on_bytes(text, 40000)`, runs
+  SudachiPy (`Dictionary().create(mode=A)`: default settings, SudachiDict-core) per chunk, drops empty and repeated
+  "空白" tokens and aligns them (`datatrove.utils.japanese_tokenizer`). SudachiPy is a binding of sudachi.rs, so Rust
+  links the same release (0.7.0) and loads the same settings, resources and dictionary files; any other SudachiPy
+  version, or no SudachiDict-core, runs datatrove's code. Sentence spans keep datatrove's per-chunk offset quirk
+  (each chunk's spans start at the previous span's end, which drifts by one when a chunk ends in a token's trailing
+  space). Where datatrove's alignment would raise (E194), Rust raises `TokenizerFallback` and that doc runs
+  datatrove's code, raising the same error; it never happened on the corpora above.
 - **The `IS_ALPHA` token.** Inside `memory_zone`, spaCy 3.8 raises an error on the token `IS_ALPHA` once the same
   process has seen that token before, and datatrove then retokenizes the text without it. The result depends on
   process history, so when spaCy is installed any doc containing `IS_ALPHA` runs through datatrove itself.

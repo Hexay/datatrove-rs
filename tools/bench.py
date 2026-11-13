@@ -15,9 +15,12 @@ import time
 import pyarrow.parquet as pq
 from datatrove.data import Document
 from datatrove.pipeline import filters as dt
+from datatrove.pipeline import stats as dts
 from datatrove.pipeline.dedup import minhash as dtm
+from loguru import logger
 
 import datatrove_rs as rs
+from datatrove_rs import stats as rss
 from datatrove_rs.minhash import MinhashDedupSignature as RsMinhash
 
 STEPS = [
@@ -38,6 +41,8 @@ def timed(fn, reps):
 
 
 LANG = {"language": sys.argv[4]} if len(sys.argv) > 4 else {}
+STATS = ("WordStats", "SentenceStats", "DocStats", "LineStats", "ParagraphStats")
+ONLY = os.environ.get("BENCH_ONLY")  # e.g. "Stats": only rows whose name contains it
 
 
 def filter_all(cls, texts):
@@ -63,6 +68,18 @@ def minhash(cls, texts, tmp):
             s = step.get_shingles(t)
             if s.size:
                 step.get_signature(s)
+
+    return run
+
+
+def stats_run(cls, texts, tmp):
+    """A stats step's full `run()` (all four groups, files written) over docs with URLs."""
+    kwargs = LANG if cls.__name__ in ("WordStats", "SentenceStats") else {}
+
+    def run():
+        docs = (Document(text=t, id=str(i), metadata={"url": f"https://www.site{i % 50}.example.com/{i}"})
+                for i, t in enumerate(texts))
+        return sum(1 for _ in cls(tmp, **kwargs).run(docs))
 
     return run
 
@@ -96,11 +113,16 @@ def main():
     py_chain, rs_chain = (chain([s[i] for s in STEPS], c4_texts) for i in (1, 2))
     rows.append(("Chain (run, 4 filters)", c4_texts, py_chain, rs_chain))
     rows.append(("MinHash stage 1", texts, minhash(dtm.MinhashDedupSignature, texts, tmp), minhash(RsMinhash, texts, tmp)))
+    for name in STATS:
+        rows.append((f"{name} (run)", texts, stats_run(getattr(dts, name), texts, tmp), stats_run(getattr(rss, name), texts, tmp)))
 
     print(f"{n} docs, {mb:.1f} MB, median of {reps}, language {LANG.get('language', 'default')}")
     print(f"C4 and the chain run on the {len(c4_texts)} docs datatrove's C4 doesn't raise on\n")
     print(f"| Step | datatrove docs/s | datatrove_rs docs/s | speedup |\n|---|---|---|---|")
+    logger.remove()
     for name, t, py_fn, rs_fn in rows:
+        if ONLY and ONLY not in name:
+            continue
         if not t:
             print(f"| {name} | - | - | - |")
             continue

@@ -6,6 +6,7 @@ mod cluster;
 mod ftfy_check;
 mod minhash;
 mod pii;
+mod stats;
 mod url;
 mod warc;
 mod wordtok;
@@ -293,5 +294,5 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TokenizerFallback", m.py().get_type::<cjk::TokenizerFallback>())?;
     m.add_function(wrap_pyfunction!(wordtok::word_tokenizers, m)?)?;
     m.add_function(wrap_pyfunction!(wordtok::sentence_count, m)?)?;
-    Ok(())
+    stats::register(m)
 }

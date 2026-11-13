@@ -145,6 +145,38 @@ impl Words {
         Some(out)
     }
 
+    /// Code-point lengths of `sent_tokenize(text)` (datatrove strips each sentence and drops empty ones), or None
+    /// when Rust has no sentence splitter for this tokenizer.
+    pub fn sentence_lengths(&mut self, text: &str) -> Option<Vec<usize>> {
+        if let Some(s) = self.engine.final_words() {
+            return s.sentence_lengths(text);
+        }
+        let ok = self.tokenize(text);
+        if self.src != Src::Text {
+            return None;
+        }
+        if !ok {
+            return Some(Vec::new()); // the caller's `cjk_words::take_failure` check reports it
+        }
+        let whole = [(self.tokens.len(), 0)];
+        let docs = if self.docs.len() > 1 { &self.docs[..] } else { &whole[..] };
+        let mut out = Vec::new();
+        let mut first = 0;
+        for &(last, _) in docs {
+            let toks = &self.tokens[first..last];
+            sentence_starts(text, toks, &mut self.starts);
+            for (k, &s) in self.starts.iter().enumerate() {
+                let end = self.starts.get(k + 1).map_or(toks.len(), |&e| e) - 1;
+                let sent = strip(&text[toks[s].0 as usize..toks[end].1 as usize]);
+                if !sent.is_empty() {
+                    out.push(char_len(sent));
+                }
+            }
+            first = last;
+        }
+        Some(out)
+    }
+
     fn chunked_sentence_ends(&mut self, text: &str) -> Vec<usize> {
         let starts = &mut self.starts;
         cjk_words::chunked_sentence_ends(text, &self.tokens, &self.docs, |toks| {

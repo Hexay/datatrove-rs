@@ -78,6 +78,11 @@ def main():
         "regex_version": regex.__version__,
         "isspace": ranges(str.isspace),
         "isalpha": ranges(str.isalpha),
+        "isdigit": ranges(str.isdigit),
+        # one-char str.isupper/islower are CPython's Py_UNICODE_ISUPPER/ISLOWER; ISTITLE is istitle minus isupper
+        "isupper": ranges(str.isupper),
+        "islower": ranges(str.islower),
+        "istitle": ranges(lambda c: c.istitle() and not c.isupper()),
         "punct": ranges(lambda c: unicodedata.category(c).startswith("P")),
         "mn": ranges(lambda c: unicodedata.category(c) == "Mn"),
         "re_d": ranges(lambda c: re_d.match(c) is not None),

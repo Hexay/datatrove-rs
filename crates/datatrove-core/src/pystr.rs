@@ -56,6 +56,41 @@ pub fn splitlines(s: &str) -> Vec<&str> {
     out
 }
 
+/// `str.isupper()`: no lowercase or titlecase char and at least one uppercase one.
+pub fn is_upper(s: &str) -> bool {
+    let t = py();
+    let mut cased = false;
+    for c in s.chars() {
+        if t.islower.contains(c) || t.istitle.contains(c) {
+            return false;
+        }
+        cased |= t.isupper.contains(c);
+    }
+    cased
+}
+
+/// `str.istitle()`: uppercase/titlecase chars only after uncased ones, lowercase only after cased ones.
+pub fn is_title(s: &str) -> bool {
+    let t = py();
+    let (mut cased, mut prev_cased) = (false, false);
+    for c in s.chars() {
+        if t.isupper.contains(c) || t.istitle.contains(c) {
+            if prev_cased {
+                return false;
+            }
+            (prev_cased, cased) = (true, true);
+        } else if t.islower.contains(c) {
+            if !prev_cased {
+                return false;
+            }
+            (prev_cased, cased) = (true, true);
+        } else {
+            prev_cased = false;
+        }
+    }
+    cased
+}
+
 /// `str.lower()`, including the context-sensitive final sigma.
 pub fn lower(s: &str, out: &mut String) {
     out.clear();

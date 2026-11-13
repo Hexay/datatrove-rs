@@ -10,6 +10,7 @@ pub mod pii;
 pub mod pystr;
 pub mod pyunicode;
 pub mod simplify;
+pub mod stats;
 pub mod warc;
 pub mod words;
 pub mod wordtok;

@@ -18,6 +18,7 @@ _EXPORTERS = (
     "datatrove.pipeline.extractors",
     "datatrove.pipeline.formatters",
     "datatrove.pipeline.readers",
+    "datatrove.pipeline.stats",
 )
 
 _swapped: list[tuple[object, str, type]] = []

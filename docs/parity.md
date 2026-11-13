@@ -39,6 +39,17 @@ Every check compares against datatrove running unmodified in the same environmen
   20.3M tokens) over 18 sets: vie_Latn, tha_Thai and one FineWeb-2 subset per Indic tokenizer. `tools/parity.py
   --language <key> --script-fuzz N` then gives 0 filter and MinHash mismatches for each of the 16 Indic tokenizers
   (2,050 docs each) and for Thai and Vietnamese (5,750 docs each). `tests/test_wordtok.py` repeats a small version.
+- Stats steps (WordStats, SentenceStats, DocStats, LineStats, ParagraphStats): `tools/stats_parity.py <parquet>
+  [--language KEY]` runs both steps over docs split into 3 tasks (rank = task), then datatrove's `StatsMerger`, and
+  compares each task's yielded docs (text, metadata items in order), step stats, every per-task JSON file of every
+  group and every merged `metric.json`, byte for byte, or the raised exception. Docs carry synthetic URLs (few hosts,
+  multi-label and private suffixes, IPs, IDNs, empty), token counts and preset `fqdn`s. 13 configs vary thresholds
+  (with duplicates), groups (subsets, order, duplicates), histogram digits 0-6 and top-k 1/3; one switches to
+  datatrove's loop mid-run (token counts past 2**53), one has no URLs (both raise `KeyError`). 0 differences on 10,500
+  English docs (6,000 FineWeb, 1,500 perturbed, 2,000 fuzzed, 1,000 case-heavy fuzzed in `tools/stats_ref.py`), and,
+  for WordStats/SentenceStats, on 23,125 FineWeb-2 and fuzzed docs in German, French, Russian, Arabic, Turkish,
+  Chinese, Japanese, Vietnamese, Thai, Hindi, Bengali, Tamil and Urdu (Urdu SentenceStats raises in both without
+  urduhack). `tests/test_stats.py` repeats a small version, plus `str(round(x, d))` on 10,000+ floats and ties.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -150,6 +161,19 @@ Every check compares against datatrove running unmodified in the same environmen
 - **FTFYFormatter.** Never changes text itself: it returns the input when ftfy provably would, and calls ftfy
   otherwise. The proof per fixer is in `python/datatrove_rs/ftfy_check.py`; ftfy's regexes are translated from
   Python's parse tree. Configs with `fix_line_breaks` or `normalization`, or ftfy other than 6.x, always call ftfy.
+- **Stats steps.** `extract_stats` runs in Rust on the step's tokenizer (as the filters pick it) with Python's
+  `isupper`/`istitle`/`isdigit` tables; SentenceStats uses the sentencizer spans (per 40,000-byte chunk for Japanese)
+  or the Indic `sentence_split` port, and Thai and Urdu sentences run datatrove's code. `run()` keeps datatrove's loop
+  shape (`python/datatrove_rs/_stats_run.py`) with the counters in Rust: `counters[stat][key] += value` is
+  `MetricStats.__add__` with `from_dict(value)` (unit "task"), redone operation for operation with int totals kept
+  exact and int/float `min`/`max` kept apart; histogram keys are CPython's `round` (correctly rounded, ties to even)
+  and float `repr` (on a tie between two shortest digit strings, the correctly rounded one). At the end the counters
+  become real `MetricStats` and datatrove's save loop writes the files (`json.dumps` in one write instead of
+  `json.dump`'s streamed chunks: same text). A value, key or token count that isn't a plain int (|v| <= 2**53),
+  finite float or str hands the counters to datatrove's loop for the rest of the run. Only datatrove 0.10.1
+  (`VERIFIED_DATATROVE`), unmodified `extract_stats`/`get_kv`/`track_time`, int `histogram_round_digits` >= 0 and
+  plain int thresholds and str stop words take the Rust path; LineStats docs with `metadata["lines"]` extract in
+  Python.
 - **Reproduced quirks.** `Counter.most_common` tie-breaking; the `"".join` n-gram keys in `find_all_duplicate`;
   `ZeroDivisionError` on degenerate docs; the one-sentence result for empty text; numpy `uint64` wrap-around in the
   MinHash permutation.

@@ -3,7 +3,7 @@
 
 use super::indic::{tables, Tables};
 use super::SentenceCount;
-use crate::pystr::strip;
+use crate::pystr::{char_len, strip};
 
 pub(super) fn sentence_count(text: &str, lang: &str) -> SentenceCount {
     let sents = sentence_split(text, lang);
@@ -19,6 +19,11 @@ pub(super) fn sentence_count(text: &str, lang: &str) -> SentenceCount {
         }
     }
     SentenceCount::Exact(sents.len())
+}
+
+/// Code-point lengths of `strip_strings(sentence_split(text, lang))`.
+pub(super) fn sentence_lengths(text: &str, lang: &str) -> Vec<usize> {
+    sentence_split(text, lang).iter().map(|s| char_len(strip(s))).filter(|&n| n > 0).collect()
 }
 
 fn sentence_split(text: &str, lang: &str) -> Vec<String> {

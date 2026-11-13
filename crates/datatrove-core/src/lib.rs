@@ -12,3 +12,4 @@ pub mod pyunicode;
 pub mod simplify;
 pub mod warc;
 pub mod words;
+pub mod wordtok;

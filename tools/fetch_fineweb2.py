@@ -1,10 +1,12 @@
 """Sample FineWeb-2 text for per-language parity runs.
 
-Usage: fetch_fineweb2.py <out_dir> <n_docs> <spacy_code>...
+Usage: fetch_fineweb2.py <out_dir> <n_docs> <code>...
 
-For each spaCy code, takes the FineWeb-2 subsets datatrove tokenizes with `SpaCyTokenizer(code)` (the code's own
+<code> is a spaCy code, or `<TokenizerClass>[:<tok_code>]` for datatrove's other tokenizers (`ThaiTokenizer`,
+`IndicNLPTokenizer:hi`). For each, takes the FineWeb-2 subsets datatrove tokenizes with it (the code's own
 language first, then proxied languages) and reads their `test` split (`train` if absent) row group by row group
-until n_docs, writing <out_dir>/<code>.parquet (one `text` column) and <out_dir>/<code>.bin ('\0'-joined).
+until n_docs, writing <out_dir>/<name>.parquet (one `text` column) and <out_dir>/<name>.bin ('\0'-joined), where
+<name> is <code> with `:` replaced by `-`.
 """
 
 import csv
@@ -20,13 +22,24 @@ REPO = "datasets/HuggingFaceFW/fineweb-2/data"
 MAX_SUBSETS = 6
 
 
+def tokenizer_key(tok_type: str, tok_code: str) -> str:
+    """The spaCy code for SpaCyTokenizer rows, else e.g. `IndicNLPTokenizer:hi` or `ThaiTokenizer`."""
+    return tok_code if tok_type == "SpaCyTokenizer" else f"{tok_type}:{tok_code}".rstrip(":")
+
+
+# The native language of tokenizers that take no language argument.
+NATIVE = {"ThaiTokenizer": "th", "KiwiTokenizer": "ko"}
+
+
 def subsets_by_code():
     out = {}
     with open(os.path.join(ASSETS_PATH, "tokenizer_assignment.csv")) as f:
         for r in csv.DictReader(f):
-            if r["type"] == "SpaCyTokenizer":
-                native = r["code_1"] == r["tok_code"] and r["default_script"] == "TRUE"
-                out.setdefault(r["tok_code"], []).append((not native, f"{r['code_3']}_{r['script']}"))
+            if r["type"]:
+                own = r["tok_code"] or NATIVE.get(r["type"])
+                native = r["code_1"] == own and r["default_script"] == "TRUE"
+                key = tokenizer_key(r["type"], r["tok_code"])
+                out.setdefault(key, []).append((not native, f"{r['code_3']}_{r['script']}"))
     return {code: sorted(v) for code, v in out.items()}
 
 
@@ -72,8 +85,9 @@ def main():
     fs, table = HfFileSystem(), subsets_by_code()
     for code in codes:
         texts, used = sample(fs, table[code], n)
-        pq.write_table(pa.table({"text": texts}), f"{out_dir}/{code}.parquet")
-        with open(f"{out_dir}/{code}.bin", "wb") as f:
+        name = code.replace(":", "-")
+        pq.write_table(pa.table({"text": texts}), f"{out_dir}/{name}.parquet")
+        with open(f"{out_dir}/{name}.bin", "wb") as f:
             f.write("\0".join(texts).encode("utf-8"))
         print(f"{code}: {len(texts)} docs from {' '.join(used)}", flush=True)
 

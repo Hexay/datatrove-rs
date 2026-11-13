@@ -8,6 +8,7 @@ mod minhash;
 mod pii;
 mod url;
 mod warc;
+mod wordtok;
 
 use datatrove_core::filters::c4::{C4Config, LineOutcome, C4};
 use datatrove_core::filters::fineweb::{FineWeb, FineWebConfig};
@@ -148,6 +149,8 @@ impl PyFineWebQuality {
     }
 }
 
+type C4Result<'py> = (Py<PyAny>, Option<String>, Bound<'py, PyBytes>);
+
 #[pyclass(name = "C4Quality")]
 struct PyC4Quality(C4);
 
@@ -185,15 +188,12 @@ impl PyC4Quality {
         )))
     }
 
-    /// `(result, new_text | None, line_outcomes)`; outcome bytes index `LINE_STATS` in `filters.py`.
-    fn filter<'py>(
-        &mut self,
-        py: Python<'py>,
-        text: &str,
-    ) -> PyResult<(Py<PyAny>, Option<String>, Bound<'py, PyBytes>)> {
-        let out = self.0.filter(text);
+    /// `(result, new_text | None, line_outcomes)`, or None when only datatrove can decide; outcome bytes index
+    /// `LINE_STATS` in `filters.py`.
+    fn filter<'py>(&mut self, py: Python<'py>, text: &str) -> PyResult<Option<C4Result<'py>>> {
+        let Some(out) = self.0.filter(text) else { return Ok(None) };
         let codes: Vec<u8> = out.lines.iter().map(|o| line_code(*o)).collect();
-        Ok((to_py(py, Ok(out.verdict))?, out.text, PyBytes::new(py, &codes)))
+        Ok(Some((to_py(py, Ok(out.verdict))?, out.text, PyBytes::new(py, &codes))))
     }
 }
 
@@ -241,16 +241,17 @@ fn simplify_text(text: &str, norm: (bool, bool, bool, bool, bool, bool, bool)) -
 #[pyo3(signature = (text, language = "en"))]
 fn split_into_words(text: &str, language: &str) -> PyResult<Vec<String>> {
     let mut out = Vec::new();
-    words(language)?.words(text, &mut out);
+    let mut w = words(language)?;
+    w.words(text, &mut out);
     cjk::check()?;
     Ok(out.into_iter().map(str::to_owned).collect())
 }
 
-/// `split_into_sentences(text, lang)`, as `split_into_words`.
+/// `split_into_sentences(text, lang)`, as `split_into_words`; None where only datatrove's sentences exist.
 #[pyfunction]
 #[pyo3(signature = (text, language = "en"))]
-fn split_into_sentences(text: &str, language: &str) -> PyResult<Vec<String>> {
-    let out = words(language)?.sentences(text).into_iter().map(str::to_owned).collect();
+fn split_into_sentences(text: &str, language: &str) -> PyResult<Option<Vec<String>>> {
+    let out = words(language)?.sentences(text).map(|s| s.into_iter().map(str::to_owned).collect());
     cjk::check()?;
     Ok(out)
 }
@@ -290,5 +291,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cjk::load_sudachi, m)?)?;
     m.add_function(wrap_pyfunction!(cjk::sudachi_version, m)?)?;
     m.add("TokenizerFallback", m.py().get_type::<cjk::TokenizerFallback>())?;
+    m.add_function(wrap_pyfunction!(wordtok::word_tokenizers, m)?)?;
+    m.add_function(wrap_pyfunction!(wordtok::sentence_count, m)?)?;
     Ok(())
 }

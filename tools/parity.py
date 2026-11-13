@@ -18,8 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pyarrow.parquet as pq  # noqa: E402
 from datatrove.pipeline.dedup import minhash as dtm  # noqa: E402
 
+from datatrove_rs import _core  # noqa: E402
+from datatrove_rs._base import rust_language  # noqa: E402
 from datatrove_rs.minhash import MinhashDedupSignature as RsMinhash  # noqa: E402
 from fuzz import fuzz_docs, perturb  # noqa: E402
+from wordtok_fuzz import fuzz_docs as script_fuzz  # noqa: E402
 from parity_cases import FILTER_CASES, MINHASH_CASES, random_filter_cases  # noqa: E402
 from parity_ref import (  # noqa: E402
     cached,
@@ -80,12 +83,15 @@ def main():
                     help="directory caching datatrove-side results (default: $DATATROVE_RS_PARITY_CACHE)")
     ap.add_argument("--out", default="parity_mismatches.txt")
     ap.add_argument("--language", default=None, help="datatrove language passed to every step (default: theirs)")
+    ap.add_argument("--script-fuzz", type=int, default=0, help="extra wordtok_fuzz docs for a ported tokenizer")
     args = ap.parse_args()
 
     lang = {"language": args.language} if args.language else {}
     settle_is_alpha_state(args.language or "eng")
     real = pq.read_table(args.parquet, columns=["text"]).slice(0, args.real).column("text").to_pylist()
     texts = real + perturb(real[: args.real // 4]) + fuzz_docs(args.fuzz)
+    if args.script_fuzz and (name := rust_language(args.language or "eng")) in _core.word_tokenizers():
+        texts += script_fuzz(real, args.script_fuzz, 0, name)
     print(f"{len(texts)} docs: {len(real)} real, {args.real // 4} perturbed, {args.fuzz} fuzz; {args.workers} workers")
     if args.language and not RsMinhash(".", language=args.language).rust():
         print(f"note: no Rust path for language {args.language!r}; this compares datatrove with itself")

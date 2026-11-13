@@ -5,7 +5,8 @@
 ```
 crates/spacy-tokenizer   spaCy rule-based tokenizer port, 57 languages (affix rules, specials, URL matcher, chunk cache)
 crates/cjk-tokenizer     jieba port (zh) and sudachi.rs wrapper (ja), with datatrove/spaCy's doc alignment
-crates/datatrove-core    filters, MinHash, Python-compatible str/Unicode helpers, `profile` binary
+crates/datatrove-core    filters, MinHash, Python-compatible str/Unicode helpers, `profile` binary;
+                         `src/wordtok`: Vietnamese (pyvi), Thai (newmm) and Indic NLP tokenizer ports
 crates/datatrove-py      PyO3 bindings (datatrove_rs._core)
 python/datatrove_rs      datatrove subclasses, patch/mirror/env-var adoption, fallback logic
 tools/                   dev.sh, parity/bench harnesses, fuzzers, Unicode table exporter
@@ -40,6 +41,7 @@ crates/spacy-tokenizer/tools/parity.sh <docs.bin>     # tokenizer vs spaCy, toke
 crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: affixes, real and fuzzed docs
 crates/cjk-tokenizer/tools/parity.sh <zh|ja> <docs.bin>       # jieba/Sudachi port vs datatrove's tokenizer
 tools/cjk_fuzz.py <out.bin> <n> <zh|ja>                        # adversarial Chinese/Japanese docs
+tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]... # vi/Thai/Indic ports vs datatrove's tokenizers
 ```
 
 `tools/dev.sh parity` caches the datatrove side in `$DATATROVE_RS_PARITY_CACHE` (default
@@ -55,7 +57,10 @@ scripts, in `flock`: a slot held across a loop blocks every other worktree for i
 After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/export_rules.py tables` and
 `export_rules.py <lang>...`, then rerun `lang_parity.sh` for each language. To follow a new SudachiPy release, bump
 the `sudachi` tag in `crates/cjk-tokenizer/Cargo.toml`, `SUDACHI_VERSION` and the test pin, then rerun
-`cjk-tokenizer/tools/parity.sh ja`.
+`cjk-tokenizer/tools/parity.sh ja`. To follow pythainlp, indic-nlp-library or pyvi, re-export with
+`tools/export_wordtok.py` / `tools/export_vi.py`, rerun `tools/wordtok_parity.sh`, then add the version to
+`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. `PROFILE_LANG=thai|vi|indic:<code>` profiles a
+port with the `profile` binary.
 
 `docs.bin` is UTF-8 docs joined by `\0`. Wall time is unreliable on a loaded machine: A/B Rust changes with
 `tools/icount.sh` (instruction counts are load-independent) and confirm wall time by alternating old/new binaries.

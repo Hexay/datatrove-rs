@@ -33,6 +33,12 @@ Every check compares against datatrove running unmodified in the same environmen
   ones span several 40,000-byte chunks). `tools/parity.py --language cmn_Hani|jpn_Jpan` on those corpora gives 0
   filter and MinHash mismatches: 22,184 Chinese and 11,021 Japanese docs, all 18 configs. `tests/test_cjk.py`
   repeats a small version in CI.
+- Vietnamese, Thai and Indic: `tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]...` compares words
+  and per-line sentence counts (whole-doc sentences for Vietnamese) with datatrove's tokenizer. 0 differences on
+  70,000 FineWeb-2 docs (4,000 per set, 2,000 for Konkani; 37.9M tokens) and 18,000 fuzzed docs (`tools/wordtok_fuzz.py`,
+  20.3M tokens) over 18 sets: vie_Latn, tha_Thai and one FineWeb-2 subset per Indic tokenizer. `tools/parity.py
+  --language <key> --script-fuzz N` then gives 0 filter and MinHash mismatches for each of the 16 Indic tokenizers
+  (2,050 docs each) and for Thai and Vietnamese (5,750 docs each). `tests/test_wordtok.py` repeats a small version.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -64,8 +70,23 @@ Every check compares against datatrove running unmodified in the same environmen
   rule-based spaCy languages (`datatrove_rs._core.spacy_languages()`), which covers every language code datatrove
   maps to one of them. Their rules are exported from spaCy into `crates/spacy-tokenizer/data/rules/` by
   `export_rules.py`; case-insensitive patterns are rewritten to the exact code-point sets Python's `re` matches
-  (`ignorecase.py`). Languages with other tokenizers (Vietnamese, Korean, Thai, Indic and others) run datatrove's
-  Python code unchanged.
+  (`ignorecase.py`). Chinese, Japanese, Vietnamese, Thai and Indic have their own ports (below); Korean (Kiwi: a C++
+  morphological analyzer with a 105 MB language model, not reachable through kiwipiepy's abi3 wheel) and Stanza
+  languages run datatrove's Python code unchanged.
+- **Vietnamese, Thai, Indic** (`crates/datatrove-core/src/wordtok`). Each port embeds data exported from one library
+  version (`tools/export_wordtok.py`, `tools/export_vi.py`) and runs only when that library is absent or installed at
+  that version (`python/datatrove_rs/_wordtok.py`: pythainlp 5.4.0, indic-nlp-library 0.92, pyvi 0.1.1).
+  - Vietnamese is spaCy's `vi` tokenizer with pyvi: the syllable regex, pyvi's CRF features and Viterbi over the
+    weights read from the binary crfsuite model (ties as crfsuite breaks them), its merge rules, then spaCy's gaps
+    and sentencizer.
+  - Thai is pythainlp's `newmm` in safe mode (TCC regex, dictionary trie, its graph search and chunking),
+    `rejoin_formatted_num`, then `strip_strings`. Sentences come from pythainlp's CRF `crfcut`, which isn't ported:
+    Rust C4 only uses the fact that each kept line has at least one sentence and asks datatrove when a doc keeps too
+    few lines to decide. That needs pythainlp and python-crfsuite installed, and `split_paragraph=True`.
+  - Indic is `trivial_tokenize` (including the number-joining quirk that skips a match at offset 0) and
+    `sentence_split` with its abbreviation merges and transliterated acronym check. Where datatrove's
+    `simple_span_tokenize` raises on a merged sentence, or for Urdu (urduhack), C4 runs datatrove's code for that doc.
+    C4 with `split_paragraph=False` runs datatrove's code for Thai and Indic.
 - **Chinese.** datatrove's `SpaCyTokenizer("zh")` is spaCy's Chinese tokenizer with `segmenter="jieba"`:
   `jieba.cut(text, HMM=True)` then `util.get_words_and_spaces`. It covers every key datatrove maps to it (`cmn`,
   `zh_Hani`, `yue`, `wuu_Hani`, `hak_Hani`, `nan_Hani`, `zho_Hani`, ...); note that bare `"zh"` maps to spaCy `xx`

@@ -59,6 +59,9 @@ You can also run a script unmodified with `python -m datatrove_rs my_pipeline.py
 | `filters.FineWebQualityFilter` | 86x | |
 | `dedup.MinhashDedupSignature` | 48x | MinHash stage 1 |
 | `dedup.MinhashDedupCluster` | 14-24x | MinHash stage 3; 2.7-3.3x less peak memory |
+| `dedup.SingleBloomFilter` | 38x | `step()`; 30x German, 20x Chinese; same saved bloom file |
+| `decont.NGramsDecontFilter` | 43x | 35x German, 16x Chinese; `NGramsDecontIndexer.compute_hashes` too |
+| `filters.UnigramLogProbFilter` | 75x | 50x German, 27x Chinese |
 | `formatters.PIIFormatter` | 9-16x | |
 | `formatters.FTFYFormatter` | 21-34x | skips ftfy where it provably changes nothing; the rest still runs ftfy |
 | `filters.C4BadWordsFilter` | 13x | |
@@ -84,7 +87,7 @@ C4BadWordsFilter on 12,000 FineWeb and 12,000 FineWeb-2 documents. Full numbers 
 [docs/fineweb-profile.md](docs/fineweb-profile.md).
 
 Each replacement subclasses the datatrove step, takes the same arguments and produces the same results: keep/drop
-decisions, drop reasons, rewritten text, stats, and MinHash signature and cluster files. Pickled pipelines work on Slurm and
+decisions, drop reasons, rewritten text, stats, MinHash signature and cluster files, and Bloom filter files. Pickled pipelines work on Slurm and
 local multiprocessing workers whether or not the worker patched.
 
 ## Exactness
@@ -97,6 +100,9 @@ Output equality with datatrove is the product, so every change is checked agains
   languages, 21.4M Chinese and Japanese tokens and 58.3M Vietnamese, Thai and Indic tokens.
 - **Stats steps:** per-task and merged stats files, per-doc metadata and step stats byte-identical on 10,500
   English documents across 13 configurations and 23,125 documents in 13 other languages.
+- **Bloom filter, decontamination, unigram log-probs:** decisions, stats, metadata and the saved bloom file
+  identical on 4,000 FineWeb documents plus 7,000 perturbed, fuzzed and duplication-heavy ones (with datatrove's own
+  unigram table), and 9,000 FineWeb-2 documents plus 13,950 derived ones in 9 languages, across 18 configurations.
 - **Trafilatura:** 10,666 of 10,666 Common Crawl pages identical (see trafilatura-rs).
 - **End to end:** the FineWeb recipe gives identical output on 5,000 Common Crawl records.
 

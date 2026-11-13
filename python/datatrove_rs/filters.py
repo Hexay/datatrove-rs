@@ -1,7 +1,7 @@
 from datatrove.pipeline import filters as dt
 
-from datatrove_rs import _core
-from datatrove_rs._base import RustBacked
+from datatrove_rs import _core, _wordtok
+from datatrove_rs._base import _NOT_APPLICABLE, RustBacked
 from datatrove_rs._run import Counters, FastRun
 
 # Indexed by the line outcome codes C4Quality.filter returns; code 6 = the line dropped the whole doc.
@@ -90,6 +90,8 @@ class FineWebQualityFilter(_RustFilter, dt.FineWebQualityFilter):
 
 class C4QualityFilter(_RustFilter, dt.C4QualityFilter):
     def _build_rust(self, language):
+        if language in _wordtok.names() and not _wordtok.c4_supported(language, self.split_paragraph):
+            return _NOT_APPLICABLE
         return _core.C4Quality(
             self.split_paragraph,
             self.remove_citations,
@@ -105,7 +107,10 @@ class C4QualityFilter(_RustFilter, dt.C4QualityFilter):
         )
 
     def _rust_filter(self, rs, doc, counters=None):
-        result, text, lines = rs.filter(doc.text)
+        out = rs.filter(doc.text)
+        if out is None:
+            return dt.C4QualityFilter.filter(self, doc)
+        result, text, lines = out
         _count_lines(counters or Counters(self.stats.stats), lines)
         if text is not None:
             doc.text = text

@@ -112,9 +112,11 @@ def test_language_detection_does_not_build_spacy_tokenizer(monkeypatch):
     try:
         assert _base.rust_language("eng") == _base.rust_language("en") == "en"
         assert _base.rust_language("deu") == "de" and _base.rust_language("zul_Latn") == "tn"
-        # vi (pyvi), Kiwi, Stanza and Thai stay on datatrove's code; zh/ja need their tokenizer packages.
-        assert all(_base.rust_language(x) is None for x in ("vie", "kor", "hin", "tha"))
+        # Kiwi and Stanza ("hin" without a script is Stanza's) stay on datatrove's code; zh/ja need their packages.
+        assert all(_base.rust_language(x) is None for x in ("kor", "hin"))
         assert _base.rust_language("cmn") in ("zh", None) and _base.rust_language("jpn") in ("ja", None)
+        assert (_base.rust_language("vie"), _base.rust_language("tha")) == ("vi", "thai")
+        assert (_base.rust_language("hin_Deva"), _base.rust_language("urd_Arab")) == ("indic:hi", "indic:ur")
     finally:
         _base.rust_language.cache_clear()
 

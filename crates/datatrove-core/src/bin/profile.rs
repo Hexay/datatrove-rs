@@ -74,15 +74,17 @@ fn main() {
     let reps = args.get(2).map_or(5, |r| r.parse().unwrap());
     ONLY.set(args.get(3).cloned()).unwrap();
 
-    let tok = lang_tokenizer();
-    for (name, cache) in
-        [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)]
-    {
-        let mut st = State::new(cache);
-        time(name, &docs, reps, |d| tok.tokenize(d, &mut st));
+    // `wordtok` names (PROFILE_LANG=thai, indic:hi, vi) have no spaCy rules: skip the raw-tokenizer stages
+    if let Some(Ok(tok)) = tokenizer(&lang(), Backend::Split) {
+        for (name, cache) in
+            [("tokenizer, no chunk cache", 0), ("tokenizer, cache 10k", 10_000), ("tokenizer, cache 1M", 1 << 20)]
+        {
+            let mut st = State::new(cache);
+            time(name, &docs, reps, |d| tok.tokenize(d, &mut st));
+        }
+        let mut st = State::new(1 << 20);
+        time("tokenizer, cache 1M, no matcher", &docs, reps, |d| tok.tokenize_without_matcher(d, &mut st));
     }
-    let mut st = State::new(1 << 20);
-    time("tokenizer, cache 1M, no matcher", &docs, reps, |d| tok.tokenize_without_matcher(d, &mut st));
     let space = &datatrove_core::pyunicode::py().isspace;
     let mut chunks = 0usize;
     time("floor: isspace scan per char", &docs, reps, |d| {
@@ -195,7 +197,7 @@ fn main() {
         if !matches!(rep.filter(d), Ok(Verdict::Keep)) || !matches!(qual.filter(d), Ok(Verdict::Keep)) {
             return;
         }
-        let out = c4.filter(d);
+        let Some(out) = c4.filter(d) else { return };
         if matches!(out.verdict, Verdict::Keep) {
             let _ = fw.filter(out.text.as_deref().unwrap_or(d));
         }

@@ -1,9 +1,12 @@
-//! datatrove's `SpaCyTokenizer(lang)`: `spacy.blank(lang)` + the `sentencizer` pipe, for every language with
-//! embedded rules (`spacy_tokenizer_rs::languages`), and Chinese/Japanese (`cjk_words`).
+//! datatrove's word tokenizers: `SpaCyTokenizer(lang)` (`spacy.blank(lang)` + the `sentencizer` pipe) for every
+//! language with embedded rules (`spacy_tokenizer_rs::languages`), Chinese/Japanese (`cjk_words`), and the ports
+//! in `wordtok`.
 
 use crate::cjk_words::{self, Cjk};
 use crate::pystr::{char_len, strip};
 use crate::pyunicode::py;
+pub use crate::wordtok::SentenceCount;
+use crate::wordtok::{self, Splitter, Src};
 pub use spacy_tokenizer_rs::languages;
 use spacy_tokenizer_rs::specials::Span;
 use spacy_tokenizer_rs::{tokenizer, Backend, State, Tokenizer};
@@ -14,7 +17,8 @@ use std::sync::OnceLock;
 /// `profile --stream-cache` for the size trade-off.
 const CHUNK_CACHE: usize = 100_000;
 
-type LastDoc = Option<(usize, Box<str>, Vec<Span>)>;
+/// (tokenizer id, text, spans, arena, src) of the last whole-doc tokenization on this thread.
+type LastDoc = Option<(usize, Box<str>, Vec<Span>, String, Src)>;
 
 thread_local! {
     /// One tokenizer state per thread and language, so every filter shares the chunk cache: FineWeb
@@ -34,10 +38,26 @@ fn shared_tokenizer(lang: &str) -> Result<(usize, &'static Tokenizer), String> {
     tok.as_ref().map(|t| (id, t)).map_err(|e| format!("{lang} rules: {e}"))
 }
 
+/// Names `Words::new` accepts besides spaCy codes and zh/ja (`wordtok`).
+pub fn word_tokenizers() -> impl Iterator<Item = String> {
+    wordtok::names()
+}
+
 #[derive(Clone, Copy)]
 enum Engine {
     Spacy(&'static Tokenizer),
     Cjk(Cjk),
+    Other(&'static dyn Splitter),
+}
+
+impl Engine {
+    /// The splitter when it yields final words rather than spaCy `Doc` tokens (stripped and sentencized here).
+    fn final_words(self) -> Option<&'static dyn Splitter> {
+        match self {
+            Engine::Other(s) if !s.spacy_doc() => Some(s),
+            _ => None,
+        }
+    }
 }
 
 /// Per-caller token buffers; tokenizer state is per thread.
@@ -48,6 +68,8 @@ pub struct Words {
     starts: Vec<usize>,
     /// (token end, byte start) per spaCy doc when datatrove tokenizes the text in several chunks (Japanese).
     docs: Vec<(usize, u32)>,
+    arena: String,
+    src: Src,
 }
 
 impl Default for Words {
@@ -57,49 +79,61 @@ impl Default for Words {
 }
 
 impl Words {
-    /// Words for spaCy language code `lang`; Err when no Rust tokenizer is available for it.
+    /// Words for a spaCy language code or a `wordtok` name; Err when Rust has no tokenizer for it.
     pub fn new(lang: &str) -> Result<Self, String> {
-        let (id, engine) = match Cjk::new(lang) {
-            Some(cjk) => {
-                (usize::MAX - cjk_words::LANGUAGES.iter().position(|&l| l == lang).unwrap(), Engine::Cjk(cjk?))
-            }
-            None => {
-                let (id, tok) = shared_tokenizer(lang)?;
-                (id, Engine::Spacy(tok))
-            }
+        let (id, engine) = if let Some(s) = wordtok::splitter(lang) {
+            (s as *const dyn Splitter as *const () as usize, Engine::Other(s))
+        } else if let Some(cjk) = Cjk::new(lang) {
+            (usize::MAX - cjk_words::LANGUAGES.iter().position(|&l| l == lang).unwrap(), Engine::Cjk(cjk?))
+        } else {
+            let (id, tok) = shared_tokenizer(lang)?;
+            (id, Engine::Spacy(tok))
         };
-        Ok(Self { id, engine, tokens: Vec::new(), starts: Vec::new(), docs: Vec::new() })
+        let (tokens, starts, docs, arena) = Default::default();
+        Ok(Self { id, engine, tokens, starts, docs, arena, src: Src::Text })
     }
 
     /// `split_into_words(text)`: token texts, stripped, empties dropped.
-    pub fn words<'a>(&mut self, text: &'a str, out: &mut Vec<&'a str>) {
+    pub fn words<'a>(&'a mut self, text: &'a str, out: &mut Vec<&'a str>) {
         out.clear();
         self.tokenize_shared(text);
-        out.extend(self.tokens.iter().map(|&(a, b)| strip(&text[a as usize..b as usize])).filter(|w| !w.is_empty()));
+        let base = if self.src == Src::Arena { self.arena.as_str() } else { text };
+        let spans = self.tokens.iter().map(|&(a, b)| &base[a as usize..b as usize]);
+        match self.engine.final_words() {
+            None => out.extend(spans.map(strip).filter(|w| !w.is_empty())),
+            Some(_) => out.extend(spans),
+        }
     }
 
     /// `len(split_into_sentences(text))`.
-    pub fn sentence_count(&mut self, text: &str) -> usize {
+    pub fn sentence_count(&mut self, text: &str) -> SentenceCount {
+        if let Some(s) = self.engine.final_words() {
+            return s.sentence_count(text);
+        }
         self.tokenize(text);
         if self.docs.len() > 1 {
-            return self.chunked_sentence_ends(text).len();
+            return SentenceCount::Exact(self.chunked_sentence_ends(text).len());
         }
         sentence_starts(text, &self.tokens, &mut self.starts);
-        self.starts.len().max(1)
+        SentenceCount::Exact(self.starts.len().max(1))
     }
 
     /// `split_into_sentences(text)`: consecutive pieces covering `text`, cut at each sentence's `end_char`.
     /// With no sentences (empty text) datatrove's zip still yields one piece, the whole text.
-    pub fn sentences<'a>(&mut self, text: &'a str) -> Vec<&'a str> {
+    /// None for the `wordtok` tokenizers without a spaCy `Doc`, whose sentence spans aren't ported.
+    pub fn sentences<'a>(&mut self, text: &'a str) -> Option<Vec<&'a str>> {
+        if self.engine.final_words().is_some() {
+            return None;
+        }
         self.tokenize(text);
         if self.docs.len() > 1 {
-            return cjk_words::split_at_chars(text, &self.chunked_sentence_ends(text));
+            return Some(cjk_words::split_at_chars(text, &self.chunked_sentence_ends(text)));
         }
         sentence_starts(text, &self.tokens, &mut self.starts);
         let tokens = &self.tokens;
         let n = self.starts.len();
         if n == 0 {
-            return vec![text];
+            return Some(vec![text]);
         }
         let mut out = Vec::with_capacity(n);
         let mut a = 0;
@@ -108,7 +142,7 @@ impl Words {
             out.push(&text[a..b]);
             a = b;
         }
-        out
+        Some(out)
     }
 
     fn chunked_sentence_ends(&mut self, text: &str) -> Vec<usize> {
@@ -119,12 +153,17 @@ impl Words {
         })
     }
 
-    /// Tokenizes `text` into `self.tokens` with the thread's shared state (buffers are swapped, not copied).
-    /// False where datatrove's tokenizer raises (see `cjk_words::take_failure`).
+    /// Tokenizes `text` into `self.tokens` (and `self.arena`/`self.src`); spaCy uses the thread's shared state
+    /// (buffers are swapped, not copied). False where datatrove's tokenizer raises (see `cjk_words::take_failure`).
     fn tokenize(&mut self, text: &str) -> bool {
+        self.src = Src::Text;
         let tok = match self.engine {
             Engine::Spacy(tok) => tok,
             Engine::Cjk(cjk) => return cjk.tokenize(text, &mut self.tokens, &mut self.docs),
+            Engine::Other(s) => {
+                self.src = s.split(text, &mut self.arena, &mut self.tokens);
+                return true;
+            }
         };
         STATES.with_borrow_mut(|states| {
             if states.len() <= self.id {
@@ -142,14 +181,16 @@ impl Words {
     /// doc (datatrove chains them per doc) tokenize it once, as datatrove's `lru_cache` on `split_into_parts` does.
     fn tokenize_shared(&mut self, text: &str) {
         let hit = LAST_DOC.with_borrow(|last| match last {
-            Some((id, t, spans)) if *id == self.id && **t == *text => {
+            Some((id, t, spans, arena, src)) if *id == self.id && **t == *text => {
                 self.tokens.clone_from(spans);
+                self.arena.clone_from(arena);
+                self.src = *src;
                 true
             }
             _ => false,
         });
         if !hit && self.tokenize(text) {
-            LAST_DOC.set(Some((self.id, text.into(), self.tokens.clone())));
+            LAST_DOC.set(Some((self.id, text.into(), self.tokens.clone(), self.arena.clone(), self.src)));
         }
     }
 }

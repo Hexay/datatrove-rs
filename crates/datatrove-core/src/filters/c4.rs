@@ -3,7 +3,7 @@
 use super::Verdict;
 use crate::pystr::{char_len, lower, split_ws, splitlines, strip};
 use crate::pyunicode::py;
-use crate::words::Words;
+use crate::words::{SentenceCount, Words};
 use std::borrow::Cow;
 
 const END_PUNCTUATION: [&str; 5] = [".", "?", "!", "\"", "'"];
@@ -53,17 +53,19 @@ impl C4 {
         Self { cfg, words }
     }
 
-    pub fn filter(&mut self, text: &str) -> C4Outcome {
+    /// None when only datatrove can decide: the tokenizer's sentence split isn't ported and the count matters,
+    /// or datatrove would raise.
+    pub fn filter(&mut self, text: &str) -> Option<C4Outcome> {
         let c = &self.cfg;
-        let raw_lines = if c.split_paragraph { splitlines(text) } else { self.words.sentences(text) };
+        let raw_lines = if c.split_paragraph { splitlines(text) } else { self.words.sentences(text)? };
         let mut lines = Vec::with_capacity(raw_lines.len());
         let mut kept: Vec<String> = Vec::new();
+        // A lower bound when some counts are only known to be >= 1 (`SentenceCount::AtLeastOne`).
         let mut num_sentences: i64 = 0;
+        let mut bound_only = false;
         let mut line_l = String::new();
-        let dropped = |reason: &'static str, lines| C4Outcome {
-            verdict: Verdict::Drop(Cow::Borrowed(reason)),
-            text: None,
-            lines,
+        let dropped = |reason: &'static str, lines| {
+            Some(C4Outcome { verdict: Verdict::Drop(Cow::Borrowed(reason)), text: None, lines })
         };
 
         for raw in raw_lines {
@@ -102,16 +104,24 @@ impl C4 {
                 continue;
             }
             if c.min_num_sentences != -1 {
-                num_sentences += if c.split_paragraph { self.words.sentence_count(&line) as i64 } else { 1 };
+                let count = if c.split_paragraph { self.words.sentence_count(&line) } else { SentenceCount::Exact(1) };
+                num_sentences += match count {
+                    SentenceCount::Exact(n) => n as i64,
+                    SentenceCount::AtLeastOne => {
+                        bound_only = true;
+                        1
+                    }
+                    SentenceCount::Unknown => return None,
+                };
             }
             kept.push(line.into_owned());
             lines.push(LineOutcome::Kept);
         }
         if num_sentences < c.min_num_sentences {
-            return dropped("too_few_sentences", lines);
+            return if bound_only { None } else { dropped("too_few_sentences", lines) };
         }
         let joined = kept.join(if c.split_paragraph { "\n" } else { " " });
-        C4Outcome { verdict: Verdict::Keep, text: Some(strip(&joined).to_owned()), lines }
+        Some(C4Outcome { verdict: Verdict::Keep, text: Some(strip(&joined).to_owned()), lines })
     }
 }
 

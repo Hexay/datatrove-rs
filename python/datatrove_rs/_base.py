@@ -5,7 +5,7 @@ from functools import lru_cache, partial
 
 from datatrove.utils.word_tokenizers import SpaCyTokenizer, WordTokenizer, load_tokenizer_assignments
 
-from datatrove_rs import _core, cjk
+from datatrove_rs import _core, _wordtok, cjk
 
 _NOT_APPLICABLE = False
 
@@ -23,22 +23,26 @@ def rust_languages() -> frozenset[str]:
 
 @lru_cache(maxsize=None)
 def rust_language(language) -> str | None:
-    """The spaCy code when datatrove would tokenize `language` with a plain `spacy.blank(code)` that Rust covers,
-    or with its zh/ja config when `cjk.load` succeeds.
+    """The Rust tokenizer for `language`: the spaCy code when datatrove would use a plain `spacy.blank(code)` that
+    Rust covers (or its zh/ja config when `cjk.load` succeeds), else a `_wordtok` port's name.
 
-    Decided from datatrove's factory table without instantiating the tokenizer, which would require spaCy to be
-    installed even though the Rust path never uses it.
+    Decided from datatrove's factory table without instantiating the tokenizer, which would require spaCy (or the
+    other tokenizer's library) to be installed even though the Rust path never uses it.
     """
     if isinstance(language, WordTokenizer):
-        plain = type(language) is SpaCyTokenizer and language.config == cjk.DATATROVE_CONFIGS.get(language.language)
-        code = language.language if plain else None
+        if type(language) is not SpaCyTokenizer:
+            return _wordtok.rust_name_of(language)
+        if language.config != cjk.DATATROVE_CONFIGS.get(language.language):
+            return None
+        cls_name, code = "SpaCyTokenizer", language.language
     else:
         factory = load_tokenizer_assignments().get(language)
-        plain = isinstance(factory, partial) and factory.args[0] == "SpaCyTokenizer" and not factory.keywords
-        code = factory.args[1] if plain else None
-    if code in cjk.DATATROVE_CONFIGS:
+        cls_name, code = factory.args if isinstance(factory, partial) and not factory.keywords else (None, None)
+    if cls_name == "SpaCyTokenizer" and code in cjk.DATATROVE_CONFIGS:
         return code if cjk.load(code) else None
-    return code if code in rust_languages() else None
+    if cls_name == "SpaCyTokenizer" and code in rust_languages():
+        return code
+    return _wordtok.rust_name(cls_name, code)
 
 
 def check_unicode_tables():

@@ -114,11 +114,6 @@ class RustBacked(DropsRustOnPickle):
         return self._rust or None
 
     def rust_for(self, text: str):
-        """`rust()`, or None when `text` must go through datatrove's Python code.
-
-        spaCy 3.8 raises inside `memory_zone` on a token "IS_ALPHA" once any earlier call in the process has seen
-        one, and datatrove then retokenizes with "IS_ALPHA" deleted. That depends on the shared spaCy vocab's
-        history, so such docs run through datatrove itself to keep that state and the output exact. Without spaCy
-        installed there is no such state to match (datatrove itself could not run), so Rust handles them too.
-        """
+        """`rust()`, or None when `text` must go through datatrove's Python code: "IS_ALPHA" docs while spaCy is
+        installed, since spaCy's output on them depends on process history (docs/is-alpha.md)."""
         return None if "IS_ALPHA" in text and spacy_installed() else self.rust()

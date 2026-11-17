@@ -5,16 +5,26 @@ import hashlib
 import os
 import pickle
 import tempfile
+import weakref
 from concurrent.futures import ProcessPoolExecutor
 
 from datatrove.data import Document
-from datatrove.utils.word_tokenizers import load_word_tokenizer
+from datatrove.utils.word_tokenizers import SpaCyTokenizer, load_word_tokenizer
+
+
+_PINNED = weakref.WeakKeyDictionary()
 
 
 def settle_is_alpha_state(language="eng"):
-    """Both sides route "IS_ALPHA" docs to datatrove's shared spaCy tokenizer, whose behavior changes after its first
-    "IS_ALPHA" token (see RustBacked.rust_for). Trigger that change up front so every process sees the same state."""
-    load_word_tokenizer(language).word_tokenize("IS_ALPHA")
+    """Gives datatrove's shared spaCy tokenizer for `language` a fresh vocab holding a permanent "IS_ALPHA" lexeme, so
+    "IS_ALPHA" docs (which both sides run through it) tokenize the same whatever ran before. Without it they read a
+    freed lexeme: docs/is-alpha.md."""
+    tok = load_word_tokenizer(language)
+    if not isinstance(tok, SpaCyTokenizer) or (tok._tokenizer is not None and _PINNED.get(tok) is tok._tokenizer):
+        return
+    tok._tokenizer = None  # its vocab may already hold the stale entry
+    _PINNED[tok] = tok.tokenizer
+    tok.tokenizer.vocab["IS_ALPHA"]
 
 
 def digest(s: str | bytes) -> bytes:

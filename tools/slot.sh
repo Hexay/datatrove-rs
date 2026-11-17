@@ -9,7 +9,8 @@ in_heavy_lock() {
     "$@"
     return
   fi
-  HEAVY_LOCK_HELD=1 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-2} flock "$LIGHT_LOCK_DIR/heavy.lock" "$@"
+  # -o: the sccache server a build starts outlives it and would otherwise inherit the lock forever
+  HEAVY_LOCK_HELD=1 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-2} flock -o "$LIGHT_LOCK_DIR/heavy.lock" "$@"
 }
 
 # in_light_slot cmd...: run one job holding whichever light.lock.N (N < LIGHT_SLOTS) frees first; nested calls

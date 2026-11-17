@@ -9,7 +9,7 @@ N=${2:-4000}
 shift $(($# < 2 ? $# : 2))
 OUT=${PARITY_OUT:-$HOME/.cache/datatrove-rs/out/$(basename "$ROOT")}
 mkdir -p "$OUT"
-# datatrove language key : sample file (tools/fetch_fineweb2.py names); Thai's sentences fall back, lines run in Rust
+# datatrove language key : sample file (tools/fetch_fineweb2.py names)
 ALL="deu_Latn:de fra_Latn:fr rus_Cyrl:ru arb_Arab:ar ell_Grek:el tur_Latn:tr cmn_Hani:cmn jpn_Jpan:ja
   jpn_Jpan:fuzz-ja vie_Latn:vi tha_Thai:ThaiTokenizer hin_Deva:IndicNLPTokenizer-hi ben_Beng:IndicNLPTokenizer-bn
   tam_Taml:IndicNLPTokenizer-ta"

@@ -4,6 +4,7 @@ each kind of ported tokenizer), the fallbacks, and numpy overflow of the signatu
 The large runs (`tools/parity.py`, FineWeb and FineWeb-2) are in docs/parity.md.
 """
 
+import importlib.util
 import io
 import os
 import pickle
@@ -67,21 +68,19 @@ LANGUAGES = {"de": "deu_Latn", "zh": "cmn_Hani", "ja": "jpn_Jpan", "vi": "vie_La
 @pytest.mark.parametrize("name", list(LANGUAGES) + ["thai"])
 @pytest.mark.parametrize("case_i", [0, 1])
 def test_languages(name, case_i):
-    if name == "thai" and case_i == 0:
-        pytest.skip("Thai sentences aren't ported: covered by test_fallbacks")
     case_name, case = SENTDEDUP_CASES[case_i]
     _check(case_name, case, _lang_docs(name), LANGUAGES.get(name, "tha_Thai"))
 
 
 def test_fallbacks():
-    pytest.importorskip("pythainlp")
     pytest.importorskip("indicnlp")
     with tempfile.TemporaryDirectory() as tmp:
-        for language in ("tha_Thai", "urd_Arab"):
-            lines = dts.SentDedupConfig(split_sentences=False)
-            for cls in (SentenceDedupSignature, SentenceDedupFilter):
-                assert cls(tmp, config=dts.SentDedupConfig(), language=language).rust() is None
-                assert cls(tmp, config=lines, language=language).rust() is not None
+        lines = dts.SentDedupConfig(split_sentences=False)
+        for cls in (SentenceDedupSignature, SentenceDedupFilter):
+            assert cls(tmp, config=dts.SentDedupConfig(), language="urd_Arab").rust() is None
+            assert cls(tmp, config=lines, language="urd_Arab").rust() is not None
+            if all(importlib.util.find_spec(m) for m in ("pythainlp", "pycrfsuite")):
+                assert cls(tmp, config=dts.SentDedupConfig(), language="tha_Thai").rust() is not None
         odd = dts.SentDedupConfig(n_sentences=2.0)
         assert SentenceDedupSignature(tmp, config=odd).rust() is None
 

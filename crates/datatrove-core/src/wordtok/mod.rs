@@ -2,6 +2,7 @@
 //! `indic:<code>` for `IndicNLPTokenizer(code)`, `thai` for `ThaiTokenizer`, `vi` for `SpaCyTokenizer("vi")`
 //! (pyvi). Data from `tools/export_wordtok.py` and `tools/export_vi.py`.
 
+mod crfsuite;
 mod indic;
 mod indic_sents;
 mod thai;
@@ -9,6 +10,7 @@ mod vi;
 
 use crate::pystr::char_len;
 use std::sync::OnceLock;
+pub use thai::load_crfcut as load_thai_crfcut;
 
 /// Where `Splitter::split`'s spans point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,6 +80,15 @@ pub fn simple_span_ends(text: &str, sents: &[String]) -> Option<Vec<usize>> {
         ends.push(chars);
     }
     Some(ends)
+}
+
+/// `len(split_into_sentences(text))` given `sent_tokenize(text)`: datatrove's zip yields one piece for zero or one
+/// sentence; Unknown where `simple_span_tokenize` raises.
+fn sentence_count_of(text: &str, sents: &[String]) -> SentenceCount {
+    if sents.len() <= 1 {
+        return SentenceCount::Exact(1);
+    }
+    simple_span_ends(text, sents).map_or(SentenceCount::Unknown, |e| SentenceCount::Exact(e.len()))
 }
 
 /// The splitter called `name`, built on first use.

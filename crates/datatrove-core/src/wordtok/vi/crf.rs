@@ -1,6 +1,7 @@
 //! pyvi's syllable CRF (`ViTokenizer.sent2features` + crfsuite's Viterbi), bit-exact: state scores add the
 //! same doubles in the same attribute order as crfsuite's `state_score`, and ties keep the first label.
 
+use super::super::crfsuite::viterbi;
 use crate::pystr::lower;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -148,44 +149,6 @@ impl Crf {
             }
             scores.push(s);
         }
-        self.viterbi(&scores)
-    }
-
-    /// crfsuite `crf1dc_viterbi`: strict `<` keeps the first best label on ties.
-    fn viterbi(&self, state: &[[f64; 2]]) -> Vec<u8> {
-        let n = state.len();
-        if n == 0 {
-            return Vec::new();
-        }
-        let mut back = vec![[0u8; 2]; n];
-        let mut prev = state[0];
-        for t in 1..n {
-            let mut curr = [0.0; 2];
-            for j in 0..2 {
-                let (mut best, mut arg) = (-f64::MAX, 0u8);
-                for (i, p) in prev.iter().enumerate() {
-                    let score = p + self.trans[i][j];
-                    if best < score {
-                        best = score;
-                        arg = i as u8;
-                    }
-                }
-                back[t][j] = arg;
-                curr[j] = best + state[t][j];
-            }
-            prev = curr;
-        }
-        let mut labels = vec![0u8; n];
-        let mut best = -f64::MAX;
-        for (i, &p) in prev.iter().enumerate() {
-            if best < p {
-                best = p;
-                labels[n - 1] = i as u8;
-            }
-        }
-        for t in (0..n - 1).rev() {
-            labels[t] = back[t + 1][labels[t + 1] as usize];
-        }
-        labels
+        viterbi(scores.as_flattened(), self.trans.as_flattened(), 2).into_iter().map(|l| l as u8).collect()
     }
 }

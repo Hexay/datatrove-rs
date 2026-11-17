@@ -1,4 +1,4 @@
-//! pythainlp `newmm.segment(text, safe_mode=True)` on char offsets; yields token end offsets.
+//! pythainlp `newmm.segment(text, safe_mode=...)` on char offsets; yields token end offsets.
 
 use super::tcc::valid_positions;
 use super::trie::Trie;
@@ -11,10 +11,10 @@ const MAX_GRAPH_SIZE: usize = 50;
 const SCAN_BEGIN: usize = 100;
 const SCAN_END: usize = 140;
 
-/// Token boundaries (exclusive char ends, ascending) of `segment(text, safe_mode=True)`.
-pub fn segment(text: &[char], dict: &Trie, ends: &mut Vec<usize>) {
+/// Token boundaries (exclusive char ends, ascending) of `segment(text, safe_mode=safe)`.
+pub fn segment(text: &[char], dict: &Trie, safe: bool, ends: &mut Vec<usize>) {
     ends.clear();
-    if text.len() < SCAN_END {
+    if !safe || text.len() < SCAN_END {
         onecut(text, 0, dict, ends);
         return;
     }

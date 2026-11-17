@@ -39,6 +39,12 @@ Every check compares against datatrove running unmodified in the same environmen
   20.3M tokens) over 18 sets: vie_Latn, tha_Thai and one FineWeb-2 subset per Indic tokenizer. `tools/parity.py
   --language <key> --script-fuzz N` then gives 0 filter and MinHash mismatches for each of the 16 Indic tokenizers
   (2,050 docs each) and for Thai and Vietnamese (5,750 docs each). `tests/test_wordtok.py` repeats a small version.
+- Thai sentences (`crfcut` port): `tools/wordtok_parity.py tha_Thai` also compares `sent_tokenize` and whole-doc
+  `split_into_sentences`: 0 differences on 4,000 FineWeb-2 docs and 2,000 fuzzed ones (196,402 sentences, 93,519
+  lines). `tools/parity.py --language tha_Thai --script-fuzz 1000 --random-configs 3` then gives 0 mismatches in
+  all 32 cases (C4 per line and with `split_paragraph=False`, the random C4 configs, MinHash, and the six sentence
+  dedup configs in sentence and line mode) on 7,000 docs plus 2,000 sentence-sharing ones, and `tools/stats_parity.py
+  --language tha_Thai` gives identical WordStats/SentenceStats files on 6,750 docs.
 - Stats steps (WordStats, SentenceStats, DocStats, LineStats, ParagraphStats): `tools/stats_parity.py <parquet>
   [--language KEY]` runs both steps over docs split into 3 tasks (rank = task), then datatrove's `StatsMerger`, and
   compares each task's yielded docs (text, metadata items in order), step stats, every per-task JSON file of every
@@ -74,8 +80,7 @@ Every check compares against datatrove running unmodified in the same environmen
   finder buckets. 0 mismatches in all 6 configs on 22,000 docs (12,000 FineWeb, 3,000 perturbed, 3,000 fuzzed,
   4,000 sentence-sharing), and on 58,500 FineWeb-2 docs (2,000 real, 500 perturbed, 500 fuzzed, 1,000
   sentence-sharing each, plus 500 script fuzz for Vietnamese, Thai and Indic) in German, French, Russian, Arabic,
-  Greek, Turkish, Chinese, Japanese (twice, once script-fuzzed), Vietnamese, Thai (line mode only), Hindi, Bengali
-  and Tamil. `tools/sentdedup_lang_parity.sh <fineweb2 dir> [n]` repeats it per language.
+  Greek, Turkish, Chinese, Japanese (twice, once script-fuzzed), Vietnamese, Thai (line mode here; sentence mode under Thai sentences above), Hindi, Bengali and Tamil. `tools/sentdedup_lang_parity.sh <fineweb2 dir> [n]` repeats it per language.
 - `tests/test_warc_reader.py` compares `WarcReader` output (documents, ids, metadata, stats, raised exception)
   on hand-built WARCs: every record type, missing payload types (libmagic), non-UTF-8 payloads (cchardet), chunked
   and gzip HTTP bodies, header continuations, broken framing, corrupt, truncated and padded gzip, `limit`/`skip`.
@@ -120,8 +125,20 @@ Every check compares against datatrove running unmodified in the same environmen
   (`ignorecase.py`). Chinese, Japanese, Vietnamese, Thai and Indic have their own ports (below); Korean (Kiwi: a C++
   morphological analyzer with a 105 MB language model, not reachable through kiwipiepy's abi3 wheel), Stanza
   languages and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers run datatrove's Python code
-  unchanged, as does a `SpaCyTokenizer` built with a non-default config. The rules come from spaCy 3.8.18 and
-  the Rust path does not check the installed spaCy version; parity is tested on spaCy 3.8.
+  unchanged, as does a `SpaCyTokenizer` built with a non-default config.
+- **spaCy version.** The rules were exported from spaCy 3.8.18. Every `SpaCyTokenizer` language (the 57 rule-based
+  ones, zh, ja and vi) takes the Rust path only when spaCy is absent or installed at a release in `VERIFIED_SPACY`
+  (`python/datatrove_rs/_base.py`): 3.8.2-3.8.11 and 3.8.13-3.8.18. For each 3.8.x release,
+  `crates/spacy-tokenizer/tools/verify_spacy.sh` re-exported all 57 languages in a fresh venv and compared them with
+  `data/rules` byte for byte, apart from the `spacy_version` stamp: identical for 3.8.0-3.8.11 and 3.8.13-3.8.18
+  on Python 3.13 (3.8.7 onwards) or, for 3.8.0-3.8.6, which have no Python 3.13 wheel, against 3.8.18's export on
+  Python 3.12. 3.8.0 and 3.8.1 are still excluded: they have no `Language.memory_zone`, so datatrove 0.10's
+  `SpaCyTokenizer` raises on every call. 3.8.12 (yanked) can't build `spacy.blank` with its declared confection
+  0.x or with confection 1.x. spaCy 3.7 is out: datatrove 0.10 requires spaCy >= 3.8. Across the accepted releases
+  `tokenizer.pyx` differs only in Cython `noexcept` markers and the 3.8.2 chunk-cache limit (not output), and the
+  sentencizer, `get_words_and_spaces` and the zh/vi tokenizers only in registration and formatting. With spaCy 3.8.2
+  on Python 3.12, datatrove's words and sentence splits equal Rust's on 3,000 FineWeb, 2,000 fuzzed English and
+  1,000 FineWeb-2 docs each in German, French, Russian and Vietnamese (4.8M tokens).
 - **Vietnamese, Thai, Indic** (`crates/datatrove-core/src/wordtok`). Each port embeds data exported from one library
   version (`tools/export_wordtok.py`, `tools/export_vi.py`) and runs only when that library is absent or installed at
   that version (`python/datatrove_rs/_wordtok.py`: pythainlp 5.4.0, indic-nlp-library 0.92, pyvi 0.1.1).
@@ -129,13 +146,18 @@ Every check compares against datatrove running unmodified in the same environmen
     weights read from the binary crfsuite model (ties as crfsuite breaks them), its merge rules, then spaCy's gaps
     and sentencizer.
   - Thai is pythainlp's `newmm` in safe mode (TCC regex, dictionary trie, its graph search and chunking),
-    `rejoin_formatted_num`, then `strip_strings`. Sentences come from pythainlp's CRF `crfcut`, which isn't ported:
-    Rust C4 only uses the fact that each kept line has at least one sentence and asks datatrove when a doc keeps too
-    few lines to decide. That needs pythainlp and python-crfsuite installed, and `split_paragraph=True`.
+    `rejoin_formatted_num`, then `strip_strings`. Sentences are pythainlp's `crfcut` (`wordtok/thai/crfcut.rs`):
+    `newmm` without safe mode and with whitespace kept, `_extract_features`, crfsuite's tagger, then its label fixes.
+    The model is pythainlp's own `sentenceseg_crfcut.model`, read at run time together with `_ENDERS`/`_STARTERS`
+    (`_wordtok.load_thai_sentences`); `wordtok/crfsuite.rs` parses crfsuite's binary format and reproduces
+    `crf1dt_state_score` (each label's weights added in attribute order, keys looked up as C strings) and
+    `crf1dc_viterbi` (strict `<`, so ties keep the lower label), the same code as the Vietnamese CRF. This runs only with
+    pythainlp 5.4.0 and python-crfsuite 0.9.12 (`VERIFIED_CRFSUITE`); otherwise Thai words stay in Rust and
+    sentences go to datatrove (C4 then only uses the fact that each kept line has at least one sentence).
   - Indic is `trivial_tokenize` (including the number-joining quirk that skips a match at offset 0) and
     `sentence_split` with its abbreviation merges and transliterated acronym check. Where datatrove's
     `simple_span_tokenize` raises on a merged sentence, or for Urdu (urduhack), C4 runs datatrove's code for that doc.
-    C4 with `split_paragraph=False` runs datatrove's code for Thai and Indic.
+    C4 with `split_paragraph=False` runs datatrove's code for Indic.
 - **Chinese.** datatrove's `SpaCyTokenizer("zh")` is spaCy's Chinese tokenizer with `segmenter="jieba"`:
   `jieba.cut(text, HMM=True)` then `util.get_words_and_spaces`. It covers every key datatrove maps to it (`cmn`,
   `zh_Hani`, `yue`, `wuu_Hani`, `hak_Hani`, `nan_Hani`, `zho_Hani`, ...); note that bare `"zh"` maps to spaCy `xx`
@@ -195,8 +217,8 @@ Every check compares against datatrove running unmodified in the same environmen
   datatrove does. Stage 3 reproduces `span_tokenize`'s end offsets (Japanese chunk drift included) and slices by
   them, so the text after the last sentence is dropped as in datatrove; only the first sentence of a removed run is
   restored by `min_words_to_remove_span`; an empty doc goes to the exclusion writer with `text=None`. Out-of-order
-  duplicate indices, `simple_span_tokenize` failures (Indic), Urdu and Thai sentences (not ported: Thai runs in
-  Rust only in line mode) and non-int `n_sentences` run datatrove's code. Both steps run only when datatrove's
+  duplicate indices, `simple_span_tokenize` failures (Indic), Urdu sentences (not ported; Urdu runs in Rust only in
+  line mode) and non-int `n_sentences` run datatrove's code. Both steps run only when datatrove's
   `SentDedupConfig` and reproduced methods match a source fingerprint (`sentence_dedup.VERIFIED_SOURCE`, datatrove
   0.10.1 to main as of 2026-11); otherwise they are datatrove's.
 - **PIIFormatter.** Rust `regex` and Python `re` agree on leftmost-first matches for these ASCII patterns; the
@@ -223,7 +245,7 @@ Every check compares against datatrove running unmodified in the same environmen
   than 6.x, ftfy always runs.
 - **Stats steps.** `extract_stats` runs in Rust on the step's tokenizer (as the filters pick it) with Python's
   `isupper`/`istitle`/`isdigit` tables; SentenceStats uses the sentencizer spans (per 40,000-byte chunk for Japanese)
-  or the Indic `sentence_split` port, and Thai and Urdu sentences run datatrove's code. `run()` keeps datatrove's loop
+  the Indic `sentence_split` or the Thai `crfcut` port; Urdu sentences run datatrove's code. `run()` keeps datatrove's loop
   shape (`python/datatrove_rs/_stats_run.py`) with the counters in Rust: `counters[stat][key] += value` is
   `MetricStats.__add__` with `from_dict(value)` (unit "task"), redone operation for operation with int totals kept
   exact and int/float `min`/`max` kept apart; histogram keys are CPython's `round` (correctly rounded, ties to even)

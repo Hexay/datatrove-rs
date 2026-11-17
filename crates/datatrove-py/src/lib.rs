@@ -292,8 +292,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cjk::load_sudachi, m)?)?;
     m.add_function(wrap_pyfunction!(cjk::sudachi_version, m)?)?;
     m.add("TokenizerFallback", m.py().get_type::<cjk::TokenizerFallback>())?;
-    m.add_function(wrap_pyfunction!(wordtok::word_tokenizers, m)?)?;
-    m.add_function(wrap_pyfunction!(wordtok::sentence_count, m)?)?;
+    wordtok::register(m)?;
     stats::register(m)?;
     ngram_steps::register(m)
 }

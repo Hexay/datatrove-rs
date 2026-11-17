@@ -5,7 +5,8 @@ Usage: wordtok_parity.py <datatrove_language> <docs.bin> [--n N] [--fuzz N] [--s
 Real docs come from `docs.bin` ('\\0'-joined, `tools/fetch_fineweb2.py`); fuzzed docs splice the corpus with
 script-specific and adversarial pieces (`wordtok_fuzz.py`). Sentence counts are checked on every line of every
 doc against `len(split_into_sentences(line))`; Rust must answer "unknown" exactly where datatrove raises, and
-"at_least_one" only where datatrove returns >= 1 without raising. Prints a summary; exits 1 on any mismatch.
+"at_least_one" only where datatrove returns >= 1 without raising. Vietnamese and Thai also compare whole-doc
+`split_into_sentences`, and Thai `sent_tokenize`. Prints a summary; exits 1 on any mismatch.
 """
 
 import argparse
@@ -53,8 +54,8 @@ def main():
     corpora = {"real": docs, "fuzz": fuzz}
     bad = 0
     for kind, texts in corpora.items():
-        t_py = t_rs = 0.0
-        n_tok = n_lines = bad_tok = bad_sent = unknown = 0
+        t_py = t_rs = ts_py = ts_rs = 0.0
+        n_tok = n_lines = n_sents = bad_tok = bad_sent = unknown = 0
         for text in texts:
             t0 = time.perf_counter()
             want = tok.word_tokenize(text)
@@ -71,9 +72,24 @@ def main():
                     print(f"    text: {text[:200]!r}")
             if args.no_sentences:
                 continue
-            if name == "vi" and _core.split_into_sentences(text, name) != split_into_sentences(text, args.language):
+            if name in ("vi", "thai") and _core.split_into_sentences(text, name) != split_into_sentences(
+                text, args.language
+            ):
                 bad_sent += 1
                 print(f"  sentence split diff: {text[:200]!r}")
+            if name == "thai":
+                t0 = time.perf_counter()
+                want_s = tok.sent_tokenize(text)
+                t1 = time.perf_counter()
+                got_s = _core.sent_tokenize(text, name)
+                ts_rs += time.perf_counter() - t1
+                ts_py += t1 - t0
+                n_sents += len(want_s)
+                if got_s != want_s:
+                    bad_sent += 1
+                    if bad_sent <= 3:
+                        diff = next(i for i, (a, b) in enumerate(zip(got_s + [None], want_s + [None])) if a != b)
+                        print(f"  sent_tokenize diff @{diff}: rust {got_s[diff : diff + 2]} py {want_s[diff : diff + 2]}")
             for line in text.splitlines():
                 line = line.strip()
                 n_lines += 1
@@ -88,6 +104,8 @@ def main():
             f"{n_lines} lines, {bad_sent} sentence mismatches, {unknown} unknown; "
             f"tokenize py {t_py:.1f}s rust {t_rs:.2f}s ({t_py / max(t_rs, 1e-9):.0f}x)"
         )
+        if n_sents:
+            print(f"  {n_sents} sentences; sent_tokenize py {ts_py:.1f}s rust {ts_rs:.2f}s ({ts_py / max(ts_rs, 1e-9):.0f}x)")
     sys.exit(1 if bad else 0)
 
 

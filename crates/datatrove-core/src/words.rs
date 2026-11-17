@@ -121,10 +121,10 @@ impl Words {
 
     /// `split_into_sentences(text)`: consecutive pieces covering `text`, cut at each sentence's `end_char`.
     /// With no sentences (empty text) datatrove's zip still yields one piece, the whole text.
-    /// None for the `wordtok` tokenizers without a spaCy `Doc`, whose sentence spans aren't ported.
+    /// None unless `has_sentences`, or where datatrove's `simple_span_tokenize` raises.
     pub fn sentences<'a>(&mut self, text: &'a str) -> Option<Vec<&'a str>> {
-        if self.engine.final_words().is_some() {
-            return None;
+        if let Some(s) = self.engine.final_words() {
+            return Some(cjk_words::split_at_chars(text, &simple_span_ends(text, &s.sentences(text)?)?));
         }
         self.tokenize(text);
         if self.docs.len() > 1 {
@@ -146,7 +146,8 @@ impl Words {
         Some(out)
     }
 
-    /// True unless the tokenizer is a `wordtok` port whose sentences aren't ported (Thai, Urdu).
+    /// True unless the tokenizer is a `wordtok` port whose sentences aren't available (Urdu; Thai until
+    /// `load_thai_crfcut`).
     pub fn has_sentences(&self) -> bool {
         self.engine.final_words().is_none_or(|s| s.has_sentences())
     }

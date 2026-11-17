@@ -1,3 +1,4 @@
+import importlib.metadata
 import importlib.util
 import unicodedata
 import warnings
@@ -10,11 +11,25 @@ from datatrove_rs import _core, _wordtok, cjk
 _NOT_APPLICABLE = False
 # Errors after which a doc runs datatrove's code; text with lone surrogates can't be passed to Rust as UTF-8.
 FALLBACK = (_core.TokenizerFallback, UnicodeEncodeError)
+# spaCy releases whose re-exported tokenizer rules are byte-identical to `crates/spacy-tokenizer/data/rules`
+# (`verify_spacy.sh`) and with which datatrove runs at all: 3.8.0/3.8.1 lack `Language.memory_zone`, 3.8.12's
+# `spacy.blank` fails. See docs/parity.md.
+VERIFIED_SPACY = frozenset({f"3.8.{p}" for p in range(2, 19) if p != 12})
 
 
 @lru_cache(maxsize=1)
 def spacy_installed() -> bool:
     return importlib.util.find_spec("spacy") is not None
+
+
+@lru_cache(maxsize=1)
+def spacy_verified() -> bool:
+    """True when spaCy is absent (datatrove could not tokenize at all) or installed at a `VERIFIED_SPACY` release;
+    otherwise every `SpaCyTokenizer` language, including zh/ja/vi, runs datatrove's code."""
+    try:
+        return importlib.metadata.version("spacy") in VERIFIED_SPACY
+    except importlib.metadata.PackageNotFoundError:
+        return True
 
 
 @lru_cache(maxsize=1)
@@ -40,6 +55,8 @@ def rust_language(language) -> str | None:
     else:
         factory = load_tokenizer_assignments().get(language)
         cls_name, code = factory.args if isinstance(factory, partial) and not factory.keywords else (None, None)
+    if cls_name == "SpaCyTokenizer" and not spacy_verified():
+        return None
     if cls_name == "SpaCyTokenizer" and code in cjk.DATATROVE_CONFIGS:
         return code if cjk.load(code) else None
     if cls_name == "SpaCyTokenizer" and code in rust_languages():

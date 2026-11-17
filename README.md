@@ -98,13 +98,13 @@ Rust for:
 - the 57 languages spaCy tokenizes with rules (English, German, French, Spanish, Russian, Italian, Portuguese,
   Polish, Dutch, Turkish, Indonesian, 45 more, and the multi-language `xx`);
 - Chinese (jieba) and Japanese (SudachiPy);
-- Vietnamese (pyvi), Thai (pythainlp `newmm`), and the 16 Indic NLP tokenizers datatrove uses for 129 language
-  keys (Hindi, Bengali, Tamil, Urdu and more).
+- Vietnamese (pyvi), Thai (pythainlp `newmm` words and `crfcut` sentences), and the 16 Indic NLP tokenizers
+  datatrove uses for 129 language keys (Hindi, Bengali, Tamil, Urdu and more).
 
 ## What stays on datatrove's code
 
 - Korean (Kiwi), Stanza languages, and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers.
-- Thai and Urdu sentence splitting: `SentenceStats` and sentence dedup run datatrove's code for them (Thai sentence
+- Urdu sentence splitting (urduhack): `SentenceStats` and sentence dedup run datatrove's code for it (Urdu sentence
   dedup in line mode runs in Rust).
 - `FTFYFormatter` with ligature, width, quote or line-break fixing or a normalization turned on (Rust then only skips
   ftfy where it provably changes nothing), or ftfy other than 6.3.1.
@@ -128,16 +128,17 @@ mismatch the affected step or language runs datatrove's code:
 | Dependency | Rust path only when |
 |---|---|
 | datatrove | 0.10.1 for the stats steps; sentence dedup checks a fingerprint of the datatrove methods it reproduces |
+| spaCy | 3.8.2-3.8.11 or 3.8.13-3.8.18 (their tokenizer rules are identical to the shipped ones), or not installed |
 | jieba | 0.42.1 |
 | SudachiPy | 0.7.0 with SudachiDict-core installed |
 | pyvi, pythainlp, indic-nlp-library | 0.1.1, 5.4.0, 0.92, or not installed |
+| python-crfsuite | 0.9.12 with pythainlp 5.4.0, for Thai sentences (otherwise only they run datatrove's code) |
 | trafilatura, lxml | a pair trafilatura-rs reproduces |
 | tldextract | 5.4.x (otherwise only the host split goes through tldextract) |
 | ftfy | 6.3.1 for the `fix_text` port; other 6.x only skips ftfy on unchanged docs; otherwise ftfy always runs |
 
-Two things are not checked. The spaCy rules were exported from spaCy 3.8.18 and are tested on spaCy 3.8; the
-installed spaCy version is not read. The Unicode tables come from Python 3.13 (Unicode 15.1); on another Unicode
-version the package warns on import, since results could differ on rare characters.
+One thing is not checked: the Unicode tables come from Python 3.13 (Unicode 15.1); on another Unicode version the
+package warns on import, since results could differ on rare characters.
 
 ## Benchmarks
 

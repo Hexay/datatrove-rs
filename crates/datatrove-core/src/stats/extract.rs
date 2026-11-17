@@ -143,7 +143,7 @@ pub enum Extractor {
 
 impl Extractor {
     /// The step's `extract_stats(doc)` values into `out`; false when Rust has no sentence splitter for the
-    /// language (Thai, Urdu), so datatrove's code must run.
+    /// language (Urdu; Thai without the crfcut model), so datatrove's code must run.
     pub fn extract(&mut self, text: &str, out: &mut Vec<Num>) -> bool {
         out.clear();
         match self {

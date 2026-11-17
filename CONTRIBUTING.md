@@ -41,6 +41,7 @@ tools/make_chart.py <out.json> docs/assets/fineweb-speed.svg   # redraw the char
 tools/icount.sh <docs.bin> <stage>...                 # instructions + cycles/doc per `profile` stage
 crates/spacy-tokenizer/tools/parity.sh <docs.bin>     # tokenizer vs spaCy, token spans
 crates/spacy-tokenizer/tools/lang_parity.sh <lang> <docs.bin>  # one language: affixes, real and fuzzed docs
+crates/spacy-tokenizer/tools/verify_spacy.sh <version> [py]   # another spaCy release's rules vs data/rules
 crates/cjk-tokenizer/tools/parity.sh <zh|ja> <docs.bin>       # jieba/Sudachi port vs datatrove's tokenizer
 tools/cjk_fuzz.py <out.bin> <n> <zh|ja>                        # adversarial Chinese/Japanese docs
 tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]... # vi/Thai/Indic ports vs datatrove's tokenizers
@@ -60,13 +61,26 @@ On the shared box, `tools/dev.sh test|parity|bench` and each `lang_parity.sh`/`p
 light.lock slots in `$LIGHT_LOCK_DIR` (`tools/slot.sh`) for that run only. Never wrap a loop of runs, or these
 scripts, in `flock`: a slot held across a loop blocks every other worktree for its whole length.
 
-After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/export_rules.py tables` and
-`export_rules.py <lang>...`, then rerun `lang_parity.sh` for each language. To follow a new SudachiPy release, bump
+To accept a new spaCy release, run `crates/spacy-tokenizer/tools/verify_spacy.sh <version>`: it installs that
+release into a throwaway venv under `/srv/agents/cache/spacy-verify` (Python 3.13, the version `data/rules` was
+exported with), re-exports all 57 languages and compares each file byte for byte with `data/rules`, ignoring only
+the `spacy_version` stamp; it also prints hashes of `tokenizer.pyx`, `sentencizer.pyx` and the zh/vi language
+modules to compare with the current release. If every file matches, add the version to `VERIFIED_SPACY` in
+`python/datatrove_rs/_base.py`, bump the `spacy` test pin and run `crates/spacy-tokenizer/tools/parity.sh` with
+`PY=<that venv's python>` on a copy of a `docs.bin` (the spaCy dumps are cached next to it). A release without a
+Python 3.13 wheel: export 3.8.18 on the release's Python first (`verify_spacy.sh 3.8.18 3.12`) and pass that
+export as the reference (`verify_spacy.sh <version> 3.12 <its rules dir>`). If files differ, re-export with
+`export_rules.py tables` and `export_rules.py <lang>...` in the new spaCy, rerun `lang_parity.sh` for each language
+and replace `VERIFIED_SPACY` with the releases that match the new export. Delete the venvs afterwards. To follow a
+new SudachiPy release, bump
 the `sudachi` tag in `crates/cjk-tokenizer/Cargo.toml`, `SUDACHI_VERSION` and the test pin, then rerun
 `cjk-tokenizer/tools/parity.sh ja`. To follow pythainlp, indic-nlp-library or pyvi, re-export with
 `tools/export_wordtok.py` / `tools/export_vi.py`, rerun `tools/wordtok_parity.sh`, then add the version to
-`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. For a new ftfy release, re-export with `tools/export_ftfy.py`, rerun `tools/ftfy_parity.py` and bump
-`VERIFIED_FTFY` in `python/datatrove_rs/ftfy_check.py`. For a new datatrove release, rerun
+`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. Thai sentences read pythainlp's own
+`sentenceseg_crfcut.model` and crfcut's word sets at run time; a new python-crfsuite goes into `VERIFIED_CRFSUITE`
+after `tools/wordtok_parity.sh <fineweb2 dir> 4000 1000 tha_Thai:ThaiTokenizer` passes with it. For a new ftfy
+release, re-export with `tools/export_ftfy.py`, rerun `tools/ftfy_parity.py` and bump `VERIFIED_FTFY` in
+`python/datatrove_rs/ftfy_check.py`. For a new datatrove release, rerun
 `tools/stats_parity.py` and add it to `VERIFIED_DATATROVE` in `python/datatrove_rs/_stats_run.py`. `PROFILE_LANG=thai|vi|indic:<code>` profiles a
 port with the `profile` binary.
 

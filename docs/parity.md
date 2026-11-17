@@ -200,10 +200,8 @@ Every check compares against datatrove running unmodified in the same environmen
   (each chunk's spans start at the previous span's end, which drifts by one when a chunk ends in a token's trailing
   space). Where datatrove's alignment would raise (E194), Rust raises `TokenizerFallback` and that doc runs
   datatrove's code, raising the same error; it never happened on the corpora above.
-- **The `IS_ALPHA` token.** Inside `memory_zone`, spaCy 3.8 raises an error on the token `IS_ALPHA` once the same
-  process has seen that token before, and datatrove then retokenizes the text without it. The result depends on
-  process history, so when spaCy is installed any doc containing `IS_ALPHA` runs through datatrove itself.
-  Without spaCy, datatrove could not run at all and Rust handles these docs as spaCy would on first sight.
+- **The `IS_ALPHA` token.** spaCy's output on it depends on process history, so those docs run datatrove's code; see
+  [is-alpha.md](is-alpha.md).
 - **`run()`.** The filters override `run()` with an inlined copy of `BaseFilter.run()` whose stat bookkeeping is
   cheaper but bit-for-bit identical (`python/datatrove_rs/_run.py`). A subclass that overrides `filter`,
   `filter_batch`, `stat_update`, `update_doc_stats` or `track_time` gets datatrove's `run()` instead.
@@ -295,16 +293,6 @@ Every check compares against datatrove running unmodified in the same environmen
   `ZeroDivisionError` on degenerate docs; the one-sentence result for empty text; numpy `uint64` wrap-around in the
   MinHash permutation.
 
-## datatrove 0.10.x issues found along the way
+## Upstream issues found along the way
 
-- `utils/text.py` imports `regex` without declaring it (this package depends on `regex` for that reason).
-- The Python MinHash passes `str` to `xxhash`, which xxhash 4 rejects. The reference side needs `xxhash<4`; this
-  package's MinHash is unaffected.
-- `SentenceDedupSignature(config=None)` raises `AttributeError` in 0.10.1 (`config.hash_config`); pass a
-  `SentDedupConfig`. Fixed on main.
-- `SentenceDedupFilter` hands the exclusion writer a doc with `text=None` when the doc is empty and has no
-  duplicates.
-- `importlib.metadata` is used without being imported, and `pipeline.dedup` requires `tokenizers`. For the latter,
-  `datatrove_rs.MinhashDedupSignature` is imported lazily, so filter-only installs don't need `tokenizers`.
-- The Trafilatura step's 1 s wall-clock sandbox timeout makes the set of extracted docs load-dependent in datatrove
-  itself (4,610 vs 4,611 of 4,956 on identical runs); compare extractor output in-process, not through the sandbox.
+See [upstream-issues.md](upstream-issues.md).

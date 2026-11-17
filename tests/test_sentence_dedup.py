@@ -14,6 +14,7 @@ import tempfile
 import pytest
 from datatrove.data import Document
 from datatrove.pipeline.dedup import sentence_dedup as dts
+from datatrove.utils.word_tokenizers import load_word_tokenizer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import cjk_fuzz  # noqa: E402
@@ -73,6 +74,19 @@ LANGUAGES = {"de": "deu_Latn", "zh": "cmn_Hani", "ja": "jpn_Jpan", "vi": "vie_La
 def test_languages(name, case_i):
     case_name, case = SENTDEDUP_CASES[case_i]
     _check(case_name, case, _lang_docs(name), LANGUAGES.get(name, "tha_Thai"))
+
+
+def test_is_alpha_reference_is_deterministic():
+    """After `settle_is_alpha_state`, datatrove's output on an "IS_ALPHA" doc can't depend on the docs spaCy saw
+    before it (docs/is-alpha.md)."""
+    settle_is_alpha_state("deu_Latn")
+    tok = load_word_tokenizer("deu_Latn")
+    probe = "IS_ALPHA is a spaCy attribute name. IS_ALPHA again."
+    expected = ["IS_ALPHA is a spaCy attribute name.", "IS_ALPHA again."]
+    assert tok.sent_tokenize(probe) == expected
+    for i, text in enumerate(_lang_docs("de")):
+        tok.sent_tokenize(text)
+        assert tok.sent_tokenize(probe) == expected, i
 
 
 def test_fallbacks():

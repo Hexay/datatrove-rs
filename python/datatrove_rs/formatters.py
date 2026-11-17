@@ -76,17 +76,14 @@ class PIIFormatter(DropsRustOnPickle, dt.PIIFormatter):
 
 
 class FTFYFormatter(DropsRustOnPickle, dt_ftfy.FTFYFormatter):
-    """Returns the text as is when `ftfy_check` proves ftfy would leave it unchanged; the rest goes through ftfy."""
+    """`ftfy.fix_text` in Rust where `ftfy_check.fast_path` covers the config and the doc; the rest goes through
+    ftfy."""
 
     def format(self, text: str) -> str:
         if self._rust is None:
-            self._rust = ftfy_check.build(self.config) or _NOT_APPLICABLE
+            self._rust = ftfy_check.fast_path(self.config) or _NOT_APPLICABLE
         if self._rust:
-            check, max_len = self._rust
-            if len(text) <= max_len:
-                try:
-                    if check.first_hit(text) is None:
-                        return text
-                except UnicodeEncodeError:
-                    pass
+            fixed = self._rust(text)
+            if fixed is not None:
+                return fixed
         return super().format(text)

@@ -8,6 +8,8 @@ The regexes are translated to Rust from Python's parse tree, so they match exact
 lookarounds; `^` becomes `(?m:^)`, which is every segment start when the text is at most `max_decode_length` long,
 so a match inside any segment is a match in the whole text. Lone surrogates can't reach Rust (`str` -> UTF-8
 fails), so `fix_surrogates` needs no check. `fix_line_breaks` and `normalization` have no fast check.
+
+`fast_path` uses the Rust `fix_text` port (`build_fixer`) where it applies and this check otherwise.
 """
 
 import re
@@ -26,6 +28,9 @@ _KNOWN_FIELDS = {
     "decode_inconsistent_utf8", "fix_c1_controls", "fix_latin_ligatures", "fix_character_width", "uncurl_quotes",
     "fix_line_breaks", "fix_surrogates", "remove_control_chars", "normalization", "max_decode_length", "explain",
 }  # fmt: skip
+# The ftfy release `tools/ftfy_parity.py` verified the Rust port against; the embedded tables must match it.
+VERIFIED_FTFY = "6.3.1"
+_NOT_PORTED = ("fix_latin_ligatures", "fix_character_width", "uncurl_quotes", "fix_line_breaks")
 
 
 class Untranslatable(ValueError):
@@ -52,50 +57,71 @@ def _lit(cp: int) -> str:
     return f"\\x{{{cp:x}}}"
 
 
-def to_rust(pattern: re.Pattern, cats=None) -> str:
-    """The Rust regex matching the same strings as `pattern` (`^` as `(?m:^)`); raises `Untranslatable`."""
-    if not isinstance(pattern.pattern, str) or pattern.flags & ~(re.UNICODE | re.VERBOSE):
+def _byte_lit(b: int) -> str:
+    return f"\\x{b:02x}"
+
+
+class _Ctx:
+    def __init__(self, cats, begin, is_bytes):
+        self.cats, self.begin, self.lit = cats, begin, _byte_lit if is_bytes else _lit
+
+
+def to_rust(pattern: re.Pattern, cats=None, begin="(?m:^)", lookbehind=False):
+    """The Rust regex matching the same strings as `pattern`, with `^` as `begin`; raises `Untranslatable`.
+
+    Bytes patterns become `(?-u)` patterns for `regex::bytes`. With `lookbehind`, a leading one-char negative
+    lookbehind `(?<![...])` is split off and `(class, rest)` is returned for the caller to check by hand.
+    """
+    is_bytes = isinstance(pattern.pattern, bytes)
+    if pattern.flags & ~(re.VERBOSE | (0 if is_bytes else re.UNICODE)):
         raise Untranslatable(f"flags {pattern.flags}")
-    return _seq(_p.parse(pattern.pattern, pattern.flags), cats or _categories())
+    ctx = _Ctx({} if is_bytes else cats or _categories(), begin, is_bytes)
+    items = list(_p.parse(pattern.pattern, pattern.flags))
+    if lookbehind:
+        op, av = items.pop(0)
+        if op != _c.ASSERT_NOT or av[0] != -1 or len(av[1]) != 1 or av[1][0][0] != _c.IN:
+            raise Untranslatable("expected a leading one-char negative lookbehind")
+        return _class(av[1][0][1], ctx), _seq(items, ctx)
+    return ("(?-u)" if is_bytes else "") + _seq(items, ctx)
 
 
-def _seq(items, cats) -> str:
-    return "".join(_item(op, av, cats) for op, av in items)
+def _seq(items, ctx) -> str:
+    return "".join(_item(op, av, ctx) for op, av in items)
 
 
-def _item(op, av, cats) -> str:
+def _item(op, av, ctx) -> str:
     if op == _c.LITERAL:
-        return _lit(av)
+        return ctx.lit(av)
     if op == _c.NOT_LITERAL:
-        return f"[^{_lit(av)}]"
+        return f"[^{ctx.lit(av)}]"
     if op == _c.ANY:
         return "[^\\n]"
     if op == _c.IN:
-        return _class(av, cats)
+        return _class(av, ctx)
     if op == _c.BRANCH:
-        return "(?:" + "|".join(_seq(b, cats) for b in av[1]) + ")"
+        return "(?:" + "|".join(_seq(b, ctx) for b in av[1]) + ")"
     if op == _c.SUBPATTERN and not av[1] and not av[2]:
-        return f"(?:{_seq(av[3], cats)})"
+        return f"(?:{_seq(av[3], ctx)})"
     if op in (_c.MAX_REPEAT, _c.MIN_REPEAT):
         lo, hi, sub = av
         hi = "" if hi == _c.MAXREPEAT else hi
-        return f"(?:{_seq(sub, cats)}){{{lo},{hi}}}" + ("?" if op == _c.MIN_REPEAT else "")
+        return f"(?:{_seq(sub, ctx)}){{{lo},{hi}}}" + ("?" if op == _c.MIN_REPEAT else "")
     if op == _c.AT and av == _c.AT_BEGINNING:
-        return "(?m:^)"
+        return ctx.begin
     raise Untranslatable(str(op))
 
 
-def _class(items, cats) -> str:
+def _class(items, ctx) -> str:
     out = ["["]
     for op, av in items:
         if op == _c.NEGATE:
             out.append("^")
         elif op == _c.LITERAL:
-            out.append(_lit(av))
+            out.append(ctx.lit(av))
         elif op == _c.RANGE:
-            out.append(f"{_lit(av[0])}-{_lit(av[1])}")
-        elif op == _c.CATEGORY and av in cats:
-            out.append(cats[av])
+            out.append(f"{ctx.lit(av[0])}-{ctx.lit(av[1])}")
+        elif op == _c.CATEGORY and av in ctx.cats:
+            out.append(ctx.cats[av])
         else:
             raise Untranslatable(str(op))
     return "".join(out) + "]"
@@ -110,6 +136,65 @@ def _key_ranges(*tables) -> list[tuple[int, int]]:
         else:
             out.append([cp, cp])
     return [(lo, hi) for lo, hi in out]
+
+
+def fast_path(config):
+    """A `text -> str | None` giving `ftfy.fix_text(text, config)`, or None where ftfy itself must run; or None
+    when nothing in Rust applies to `config`. The full port (`build_fixer`) is preferred over the check."""
+    import ftfy
+
+    if set(config._fields) != _KNOWN_FIELDS or not ftfy.__version__.startswith("6."):
+        return None
+    fixer = build_fixer(config)
+    if fixer is not None:
+
+        def fix(text):
+            try:
+                new = fixer.fix(text)
+            except UnicodeEncodeError:
+                return None
+            return text if new is None else new
+
+        return fix
+    built = build(config)
+    if built is None:
+        return None
+    check, max_len = built
+
+    def unchanged(text):
+        if len(text) > max_len:
+            return None
+        try:
+            return text if check.first_hit(text) is None else None
+        except UnicodeEncodeError:
+            return None
+
+    return unchanged
+
+
+def build_fixer(config):
+    """`_core.FtfyFixer` (`crates/datatrove-core/src/ftfy`) for a `TextFixerConfig` it reproduces, else None: the
+    installed ftfy and Unicode must be the ones its tables were exported from (`tools/export_ftfy.py`), and the
+    fixers it doesn't port (ligatures, width, quotes, line breaks, normalization) must be off."""
+    import unicodedata
+
+    import ftfy
+
+    tables_ftfy, _, tables_unicode = _core.ftfy_tables_version()
+    if not (ftfy.__version__ == tables_ftfy == VERIFIED_FTFY and unicodedata.unidata_version == tables_unicode):
+        return None
+    if any(getattr(config, f) for f in _NOT_PORTED) or config.normalization is not None:
+        return None
+    m = config.max_decode_length
+    if type(m) is not int or m <= 0:
+        return None
+    u = config.unescape_html
+    unescape = 2 if isinstance(u, str) and u == "auto" else int(bool(u))
+    # without `explain`, fix_and_explain calls `fix_encoding(text)`, which ignores the config
+    enc_fields = ("restore_byte_a0", "replace_lossy_sequences", "decode_inconsistent_utf8", "fix_c1_controls")
+    enc = tuple(bool(getattr(config, f)) if config.explain else True for f in enc_fields)
+    flags = (bool(config.remove_terminal_escapes), bool(config.fix_encoding), enc, bool(config.fix_c1_controls))
+    return _core.FtfyFixer(unescape, *flags, bool(config.remove_control_chars), m)
 
 
 def build(config):

@@ -105,8 +105,8 @@ Rust for:
 - Korean (Kiwi), Stanza languages, and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers.
 - Thai and Urdu sentence splitting: `SentenceStats` and sentence dedup run datatrove's code for them (Thai sentence
   dedup in line mode runs in Rust).
-- `FTFYFormatter`'s fixes. Rust only proves that ftfy would leave a document unchanged and then skips ftfy; every
-  other document goes through ftfy.
+- `FTFYFormatter` with ligature, width, quote or line-break fixing or a normalization turned on (Rust then only skips
+  ftfy where it provably changes nothing), or ftfy other than 6.3.1.
 - Any step whose dependency is at an unverified version (see below), a subclass that overrides a reproduced
   method, a document with lone surrogates, and options outside the reproduced set (Trafilatura options
   trafilatura-rs doesn't support, non-default PII patterns, `URLFilter` without the integrated lists, and so on).
@@ -132,7 +132,7 @@ mismatch the affected step or language runs datatrove's code:
 | pyvi, pythainlp, indic-nlp-library | 0.1.1, 5.4.0, 0.92, or not installed |
 | trafilatura, lxml | a pair trafilatura-rs reproduces |
 | tldextract | 5.4.x (otherwise only the host split goes through tldextract) |
-| ftfy | 6.x (otherwise ftfy always runs) |
+| ftfy | 6.3.1 for the `fix_text` port; other 6.x only skips ftfy on unchanged docs; otherwise ftfy always runs |
 
 Two things are not checked. The spaCy rules were exported from spaCy 3.8.18 and are tested on spaCy 3.8; the
 installed spaCy version is not read. The Unicode tables come from Python 3.13 (Unicode 15.1); on another Unicode

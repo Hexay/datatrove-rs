@@ -2,15 +2,11 @@
 //! datatrove's `strip_strings` and `simple_span_tokenize`, which raises when a merged sentence isn't in `text`.
 
 use super::indic::{tables, Tables};
-use super::{simple_span_ends, SentenceCount};
+use super::{sentence_count_of, SentenceCount};
 use crate::pystr::strip;
 
 pub(super) fn sentence_count(text: &str, lang: &str) -> SentenceCount {
-    let sents = sentences(text, lang);
-    if sents.len() <= 1 {
-        return SentenceCount::Exact(1);
-    }
-    simple_span_ends(text, &sents).map_or(SentenceCount::Unknown, |e| SentenceCount::Exact(e.len()))
+    sentence_count_of(text, &sentences(text, lang))
 }
 
 /// `IndicNLPTokenizer.sent_tokenize`: `sentence_split` then `strip_strings`.

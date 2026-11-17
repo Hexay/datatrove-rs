@@ -1,6 +1,7 @@
 """The three ways to switch a pipeline: patch(), the datatrove_rs.* mirror, and the `python -m datatrove_rs` runner."""
 
 import importlib
+import importlib.metadata
 import os
 import pickle
 import subprocess
@@ -130,6 +131,45 @@ def test_language_detection_for_tokenizer_instances():
         assert _base.rust_language(SpaCyTokenizer(code)) == code
     assert _base.rust_language(SpaCyTokenizer("en", config={"nlp": {}})) is None
     assert _base.rust_language(WhitespaceTokenizer()) is None
+
+
+@pytest.mark.parametrize("version", ["3.7.5", "3.8.1", "3.8.12", "3.9.0", None])
+def test_unverified_spacy_runs_datatrove(monkeypatch, version):
+    """Every `SpaCyTokenizer` language, including the zh/ja/vi ports, needs a verified spaCy (or none at all)."""
+    from datatrove.utils.word_tokenizers import SpaCyTokenizer
+
+    from datatrove_rs import _base
+
+    real = importlib.metadata.version
+
+    def fake(dist):
+        if dist != "spacy":
+            return real(dist)
+        if version is None:
+            raise importlib.metadata.PackageNotFoundError(dist)
+        return version
+
+    monkeypatch.setattr(importlib.metadata, "version", fake)
+    _base.spacy_verified.cache_clear()
+    _base.rust_language.cache_clear()
+    try:
+        keys = ("eng", "deu", "vie", "cmn", "jpn")
+        if version is None:
+            assert _base.rust_language("eng") == "en" and _base.rust_language("vie") == "vi"
+        else:
+            assert all(_base.rust_language(k) is None for k in keys)
+            assert _base.rust_language(SpaCyTokenizer("en")) is None
+            assert rs.GopherQualityFilter().rust() is None
+        assert (_base.rust_language("tha"), _base.rust_language("hin_Deva")) == ("thai", "indic:hi")
+    finally:
+        _base.spacy_verified.cache_clear()
+        _base.rust_language.cache_clear()
+
+
+def test_installed_spacy_is_verified():
+    from datatrove_rs import _base
+
+    assert _base.spacy_verified() and _base.rust_language("eng") == "en"
 
 
 def test_is_alpha_docs_use_rust_without_spacy(monkeypatch):

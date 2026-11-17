@@ -19,16 +19,40 @@ VERIFIED = {
     "IndicNLPTokenizer": ("indic-nlp-library", frozenset({"0.92"})),
     "SpaCyTokenizer": ("pyvi", frozenset({"0.1.1"})),
 }
+# pythainlp's crfcut sentence splitter tags with python-crfsuite; the Thai port reproduces these releases' tagger.
+VERIFIED_CRFSUITE = ("python-crfsuite", frozenset({"0.9.12"}))
 _CLASSES = {"ThaiTokenizer": ThaiTokenizer, "IndicNLPTokenizer": IndicNLPTokenizer}
+
+
+def _version(dist: str) -> str | None:
+    try:
+        return importlib.metadata.version(dist)
+    except importlib.metadata.PackageNotFoundError:
+        return None
 
 
 @lru_cache(maxsize=None)
 def _library_ok(cls_name: str) -> bool:
     dist, versions = VERIFIED[cls_name]
-    try:
-        return importlib.metadata.version(dist) in versions
-    except importlib.metadata.PackageNotFoundError:
-        return True
+    version = _version(dist)
+    return version is None or version in versions
+
+
+@lru_cache(maxsize=1)
+def load_thai_sentences() -> bool:
+    """Loads pythainlp's crfcut model and word sets into the Thai port; True when pythainlp and python-crfsuite are
+    installed at verified versions (otherwise Thai sentences stay datatrove's)."""
+    dist, versions = VERIFIED["ThaiTokenizer"]
+    crf_dist, crf_versions = VERIFIED_CRFSUITE
+    if _version(dist) not in versions or _version(crf_dist) not in crf_versions:
+        return False
+    from pythainlp.corpus import corpus_path
+    from pythainlp.tokenize import crfcut
+    from pythainlp.tools.path import safe_path_join
+
+    model = safe_path_join(corpus_path(), crfcut._CRFCUT_DATA_FILENAME)
+    _core.load_thai_crfcut(model, sorted(crfcut._ENDERS), sorted(crfcut._STARTERS))
+    return True
 
 
 def _name(cls_name: str, arg: str | None) -> str | None:
@@ -49,6 +73,8 @@ def rust_name(cls_name: str | None, arg: str | None) -> str | None:
     name = _name(cls_name, arg) if cls_name in VERIFIED else None
     if name is None or name not in names() or not _library_ok(cls_name):
         return None
+    if name == "thai":
+        load_thai_sentences()
     return name
 
 
@@ -60,10 +86,11 @@ def rust_name_of(tok) -> str | None:
 
 @lru_cache(maxsize=None)
 def c4_supported(name: str, split_paragraph: bool) -> bool:
-    """Rust C4 with `split_paragraph=False` needs whole-text sentence spans, which only "vi" (a spaCy Doc) has.
-    Thai sentence counts are left to datatrove (only needed when a doc keeps few lines); Rust skips them when every
-    kept line counts at least one, which requires datatrove's Thai splitter (pythainlp's crfcut) to be importable."""
-    if name == "vi":
+    """Rust C4 with `split_paragraph=False` needs whole-text sentence spans: "vi" (a spaCy Doc) and Thai with the
+    crfcut port loaded. Without it, Thai sentence counts are left to datatrove (only needed when a doc keeps few
+    lines); Rust skips them when every kept line counts at least one, which requires datatrove's Thai splitter
+    (pythainlp's crfcut) to be importable."""
+    if name == "vi" or (name == "thai" and load_thai_sentences()):
         return True
     if not split_paragraph:
         return False

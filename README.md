@@ -70,7 +70,7 @@ from datatrove_rs.pipeline.filters import GopherQualityFilter, URLFilter
 | `decont.NGramsDecontFilter` | 53x | de 35x, zh 16x [#8] | `NGramsDecontIndexer.compute_hashes` too |
 | `filters.UnigramLogProbFilter` | 60x | de 50x, zh 27x [#8] | |
 | `formatters.PIIFormatter` | 16x [#2] | FineWeb-2 9x [#2] | |
-| `formatters.FTFYFormatter` | 34x [#2] | FineWeb-2 21x [#2] | skips ftfy where it provably changes nothing |
+| `formatters.FTFYFormatter` | 34x [#2] | FineWeb-2 25-74x, garbled docs 9-29x [#11] | `ftfy.fix_text` port for the default fixers |
 | `filters.C4BadWordsFilter` | 13x [#2] | FineWeb-2 13x [#2] | |
 | `stats.WordStats` | 27x | de 31x, zh 20x, hi 2.0x [#7] | full `run()`; datatrove 0.10.1 only |
 | `stats.SentenceStats` | 43x | de 54x, zh 28x, hi 2.5x [#7] | datatrove 0.10.1 only |
@@ -90,6 +90,7 @@ documents, except `WarcReader`, `URLFilter` and `LanguageFilter` (CPU time on 5,
 [#7]: https://github.com/Hexay/datatrove-rs/pull/7
 [#8]: https://github.com/Hexay/datatrove-rs/pull/8
 [#9]: https://github.com/Hexay/datatrove-rs/pull/9
+[#11]: https://github.com/Hexay/datatrove-rs/pull/11
 
 The steps that tokenize (filters, MinHash stage 1, stats, sentence dedup, Bloom, decontamination, unigram) run in
 Rust for:

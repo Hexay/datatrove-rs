@@ -55,6 +55,8 @@ jobs:
         run: |
           wheel=$(ls dist/*.whl)
           python -m pip install "${wheel}[test]" "${{ matrix.datatrove.spec }}"
+          # Urdu sentences: urduhack's splitter without TensorFlow (tests/conftest.py)
+          python -m pip install --no-deps urduhack==1.0.3
           python -m pip list | grep -iE "^(datatrove|spacy|xxhash) "
       - name: Install trafilatura-rs (Trafilatura extractor tests skip until it is on PyPI)
         run: |

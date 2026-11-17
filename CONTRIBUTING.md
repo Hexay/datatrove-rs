@@ -78,7 +78,10 @@ the `sudachi` tag in `crates/cjk-tokenizer/Cargo.toml`, `SUDACHI_VERSION` and th
 `tools/export_wordtok.py` / `tools/export_vi.py`, rerun `tools/wordtok_parity.sh`, then add the version to
 `VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. Thai sentences read pythainlp's own
 `sentenceseg_crfcut.model` and crfcut's word sets at run time; a new python-crfsuite goes into `VERIFIED_CRFSUITE`
-after `tools/wordtok_parity.sh <fineweb2 dir> 4000 1000 tha_Thai:ThaiTokenizer` passes with it. For a new ftfy
+after `tools/wordtok_parity.sh <fineweb2 dir> 4000 1000 tha_Thai:ThaiTokenizer` passes with it. Urdu sentences
+need urduhack importable: `uv pip install urduhack==1.0.3 tensorflow-cpu "click>=8.4.2,<9"` (urduhack pins Click 7,
+which breaks spaCy); a new urduhack release goes into `VERIFIED_URDUHACK` after `tools/wordtok_parity.py urd_Arab`
+on a FineWeb-2 `urd_Arab` sample passes with it. For a new ftfy
 release, re-export with `tools/export_ftfy.py`, rerun `tools/ftfy_parity.py` and bump `VERIFIED_FTFY` in
 `python/datatrove_rs/ftfy_check.py`. For a new datatrove release, rerun
 `tools/stats_parity.py` and add it to `VERIFIED_DATATROVE` in `python/datatrove_rs/_stats_run.py`. `PROFILE_LANG=thai|vi|indic:<code>` profiles a

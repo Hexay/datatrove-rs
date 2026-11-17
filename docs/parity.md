@@ -45,6 +45,17 @@ Every check compares against datatrove running unmodified in the same environmen
   all 32 cases (C4 per line and with `split_paragraph=False`, the random C4 configs, MinHash, and the six sentence
   dedup configs in sentence and line mode) on 7,000 docs plus 2,000 sentence-sharing ones, and `tools/stats_parity.py
   --language tha_Thai` gives identical WordStats/SentenceStats files on 6,750 docs.
+- Urdu sentences (urduhack port), with urduhack 1.0.3 and TensorFlow 2.21 on Python 3.13, on all 49,136 docs of
+  FineWeb-2 `urd_Arab` (test split) plus fuzzed ones (`wordtok_fuzz.py`: urduhack's word lists, `۔`/`؟`/`،`
+  alone and after list words, U+10FFFF): `tools/wordtok_parity.py urd_Arab` gives 0 differences in `sent_tokenize`,
+  whole-doc `split_into_sentences` (Rust gives up exactly where datatrove raises) and per-line counts on the real docs
+  (1,098,083 sentences, 532,729 lines) and 5,000 fuzzed ones (346,945 sentences); the same with urduhack 1.0.2.
+  `tools/parity.py --language urd_Arab --script-fuzz 3000 --random-configs 3 --dup-docs 4000 --only C4,SentDedup`
+  gives 0 mismatches in all 12 cases (C4 per line, `split_paragraph=False`, batch 4, 3 random configs; the six
+  sentence dedup configs, on the docs `span_tokenize` doesn't raise on) on those docs plus 12,284 perturbed and
+  6,000 fuzzed; `tools/stats_parity.py --language
+  urd_Arab` gives identical SentenceStats files on the 61,455 real and perturbed docs and, with `--no-raise`, on 12,208
+  fuzzed ones.
 - Stats steps (WordStats, SentenceStats, DocStats, LineStats, ParagraphStats): `tools/stats_parity.py <parquet>
   [--language KEY]` runs both steps over docs split into 3 tasks (rank = task), then datatrove's `StatsMerger`, and
   compares each task's yielded docs (text, metadata items in order), step stats, every per-task JSON file of every
@@ -55,7 +66,7 @@ Every check compares against datatrove running unmodified in the same environmen
   English docs (6,000 FineWeb, 1,500 perturbed, 2,000 fuzzed, 1,000 case-heavy fuzzed in `tools/stats_ref.py`), and,
   for WordStats/SentenceStats, on 23,125 FineWeb-2 and fuzzed docs in German, French, Russian, Arabic, Turkish,
   Chinese, Japanese, Vietnamese, Thai, Hindi, Bengali, Tamil and Urdu (Urdu SentenceStats raises in both without
-  urduhack). `tests/test_stats.py` repeats a small version, plus `str(round(x, d))` on 10,000+ floats and ties.
+  urduhack; with it, see Urdu sentences below). `tests/test_stats.py` repeats a small version, plus `str(round(x, d))` on 10,000+ floats and ties.
 - `tools/ngram_parity.py <parquet> --language <key>` checks `SingleBloomFilter`, `NGramsDecontFilter`,
   `NGramsDecontIndexer.compute_hashes` and `UnigramLogProbFilter`. Bloom runs `run()` over real, perturbed, fuzzed
   and heavy-duplication docs (`dup_docs`: copies, partial copies, concatenations, edits, repeated sentences) in 8
@@ -156,8 +167,22 @@ Every check compares against datatrove running unmodified in the same environmen
     sentences go to datatrove (C4 then only uses the fact that each kept line has at least one sentence).
   - Indic is `trivial_tokenize` (including the number-joining quirk that skips a match at offset 0) and
     `sentence_split` with its abbreviation merges and transliterated acronym check. Where datatrove's
-    `simple_span_tokenize` raises on a merged sentence, or for Urdu (urduhack), C4 runs datatrove's code for that doc.
-    C4 with `split_paragraph=False` runs datatrove's code for Indic.
+    `simple_span_tokenize` raises on a merged sentence, C4 runs datatrove's code for that doc. C4 with
+    `split_paragraph=False` runs datatrove's code for Indic other than Urdu.
+  - Urdu sentences: indic-nlp-library's `sentence_split` returns urduhack's `sentence_tokenizer`, a rule-based
+    splitter (`tokenization/eos.py`, identical in urduhack 1.0.2-1.1.1): split after each `۔`, then `؟`, on
+    `str.split()` words, break after a verb-final word not followed by a conjunction (taking a following `۔`/`،`
+    along), keep groups of two or more words joined by one space (`wordtok/urdu_sents.rs`, its word lists read from
+    the installed urduhack). The rejoined spaces make `simple_span_tokenize` raise on most multi-sentence docs (62%
+    of FineWeb-2 `urd_Arab`), so C4 with `split_paragraph=False` and sentence dedup stage 3 run datatrove's code for
+    those docs, which raises; U+10FFFF (urduhack's `chr(ord(max(text)) + 1)` fails) does the same. urduhack imports
+    TensorFlow, and its 1.1.x needs tensorflow-addons, which needs numpy < 2 (datatrove 0.10 needs >= 2) and has no
+    Python 3.13 wheel, so `pip install urduhack` gives a package datatrove can't import. 1.0.2/1.0.3 (no
+    tensorflow-addons) with TensorFlow 2.21 work, though their `Click~=7.1` pin breaks spaCy's import (reinstall
+    click 8; urduhack uses Click only for its CLI). Rust takes Urdu sentences only with urduhack at a release in
+    `VERIFIED_URDUHACK` (`_wordtok.py`: 1.0.2, 1.0.3) that imports; otherwise they stay datatrove's (which raises
+    without it). The import happens only when a sentence step (SentenceStats, C4, sentence dedup) builds.
+    `tests/conftest.py` runs urduhack's own `eos.py` when the package is installed but TensorFlow isn't (CI).
 - **Chinese.** datatrove's `SpaCyTokenizer("zh")` is spaCy's Chinese tokenizer with `segmenter="jieba"`:
   `jieba.cut(text, HMM=True)` then `util.get_words_and_spaces`. It covers every key datatrove maps to it (`cmn`,
   `zh_Hani`, `yue`, `wuu_Hani`, `hak_Hani`, `nan_Hani`, `zho_Hani`, ...); note that bare `"zh"` maps to spaCy `xx`
@@ -217,8 +242,8 @@ Every check compares against datatrove running unmodified in the same environmen
   datatrove does. Stage 3 reproduces `span_tokenize`'s end offsets (Japanese chunk drift included) and slices by
   them, so the text after the last sentence is dropped as in datatrove; only the first sentence of a removed run is
   restored by `min_words_to_remove_span`; an empty doc goes to the exclusion writer with `text=None`. Out-of-order
-  duplicate indices, `simple_span_tokenize` failures (Indic), Urdu sentences (not ported; Urdu runs in Rust only in
-  line mode) and non-int `n_sentences` run datatrove's code. Both steps run only when datatrove's
+  duplicate indices, `simple_span_tokenize` failures (Indic, Urdu), Urdu sentences without a verified urduhack
+  (Urdu then runs in Rust only in line mode) and non-int `n_sentences` run datatrove's code. Both steps run only when datatrove's
   `SentDedupConfig` and reproduced methods match a source fingerprint (`sentence_dedup.VERIFIED_SOURCE`, datatrove
   0.10.1 to main as of 2026-11); otherwise they are datatrove's.
 - **PIIFormatter.** Rust `regex` and Python `re` agree on leftmost-first matches for these ASCII patterns; the
@@ -245,7 +270,8 @@ Every check compares against datatrove running unmodified in the same environmen
   than 6.x, ftfy always runs.
 - **Stats steps.** `extract_stats` runs in Rust on the step's tokenizer (as the filters pick it) with Python's
   `isupper`/`istitle`/`isdigit` tables; SentenceStats uses the sentencizer spans (per 40,000-byte chunk for Japanese)
-  the Indic `sentence_split` or the Thai `crfcut` port; Urdu sentences run datatrove's code. `run()` keeps datatrove's loop
+  the Indic `sentence_split`, the Thai `crfcut` or the urduhack port (Urdu without a verified urduhack, or a doc
+  urduhack raises on, runs datatrove's code). `run()` keeps datatrove's loop
   shape (`python/datatrove_rs/_stats_run.py`) with the counters in Rust: `counters[stat][key] += value` is
   `MetricStats.__add__` with `from_dict(value)` (unit "task"), redone operation for operation with int totals kept
   exact and int/float `min`/`max` kept apart; histogram keys are CPython's `round` (correctly rounded, ties to even)

@@ -39,7 +39,16 @@ def _script_pieces(name):
 
     lang = name.split(":", 1)[1]
     if lang == "ur":
-        return _letters(0x600, 0x700) + _letters(0x750, 0x780)
+        try:
+            from urduhack.tokenization import eos
+
+            keys = eos._URDU_NEWLINE_WORDS + eos._URDU_CONJUNCTIONS
+        except ImportError:
+            keys = []
+        marks = ["۔", "؟", "،", " ۔ ", " ، ", " ؟ ", "۔۔", "؟؟", "\U0010fffe"]
+        spaced = [f" {k} " for k in keys] + [f" {k} {m} " for k in keys for m in ("۔", "،")]
+        # U+10FFFF makes urduhack raise; rare enough to leave most docs splittable
+        return _letters(0x600, 0x700) + _letters(0x750, 0x780) + (keys + marks + spaced) * 4 + ["\U0010ffff"]
     base = langinfo.SCRIPT_RANGES[lang][0]
     acks = [c for c in is_acronym_abbvr.__code__.co_consts if isinstance(c, frozenset)][0]
     ack_native = [tr.transliterate(a, "hi", lang) for a in sorted(acks)]

@@ -63,6 +63,21 @@ def encodable(text):
         return False
 
 
+def sentence_safe(texts, language):
+    from datatrove.utils.word_tokenizers import load_word_tokenizer
+
+    tok = load_word_tokenizer(language)
+
+    def ok(t):
+        try:
+            tok.sent_tokenize(t)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    return [t for t in texts if ok(t)]
+
+
 def check(name, kwargs, texts, metadata, tasks, report):
     if name in LANGUAGE_STEPS:  # datatrove's tokenizers raise on lone surrogates, which would end the run
         texts, metadata = zip(*[(t, m) for t, m in zip(texts, metadata) if encodable(t)])
@@ -85,6 +100,8 @@ def main():
     ap.add_argument("--script-fuzz", type=int, default=0, help="wordtok_fuzz docs for a ported tokenizer")
     ap.add_argument("--cjk-fuzz", type=int, default=0, help="cjk_fuzz docs (zh/ja)")
     ap.add_argument("--out", default="stats_mismatches.txt")
+    ap.add_argument("--no-raise", action="store_true",
+                    help="drop docs datatrove's sent_tokenize raises on (one such doc makes a whole run raise)")
     args = ap.parse_args()
 
     logger.remove()  # StatsMerger logs every folder
@@ -100,6 +117,8 @@ def main():
         from cjk_fuzz import fuzz_docs as cjk_docs
 
         texts += cjk_docs(name, args.cjk_fuzz)
+    if args.no_raise:
+        texts = sentence_safe(texts, args.language or "eng")
     metadata = make_metadata(len(texts))
     only = set(args.only.split(",")) if args.only else None
     print(f"{len(texts)} docs ({len(real)} real), {args.tasks} tasks, language {args.language or 'default'} "

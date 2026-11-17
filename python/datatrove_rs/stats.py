@@ -3,7 +3,7 @@
 
 from datatrove.pipeline import stats as dt
 
-from datatrove_rs import _core
+from datatrove_rs import _core, _wordtok
 from datatrove_rs._base import _NOT_APPLICABLE, RustBacked
 from datatrove_rs._stats_run import FastStatsRun, datatrove_verified
 
@@ -86,6 +86,7 @@ class SentenceStats(_RustStats, dt.SentenceStats):
         if short is None or long is None:
             return _NOT_APPLICABLE
         names = ["n_sentences", "avg_sentence_length", *_ratio_names("sentence_ratio", short, long)]
+        _wordtok.load_sentences(language)
         return _Extract(_core.StatsExtractor.sentences(language, short, long), names)
 
 

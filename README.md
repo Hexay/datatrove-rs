@@ -99,13 +99,14 @@ Rust for:
   Polish, Dutch, Turkish, Indonesian, 45 more, and the multi-language `xx`);
 - Chinese (jieba) and Japanese (SudachiPy);
 - Vietnamese (pyvi), Thai (pythainlp `newmm` words and `crfcut` sentences), and the 16 Indic NLP tokenizers
-  datatrove uses for 129 language keys (Hindi, Bengali, Tamil, Urdu and more).
+  datatrove uses for 129 language keys (Hindi, Bengali, Tamil, Urdu and more; Urdu sentences are urduhack's
+  splitter).
 
 ## What stays on datatrove's code
 
 - Korean (Kiwi), Stanza languages, and datatrove's whitespace, Burmese, Tibetan, Lao and Khmer tokenizers.
-- Urdu sentence splitting (urduhack): `SentenceStats` and sentence dedup run datatrove's code for it (Urdu sentence
-  dedup in line mode runs in Rust).
+- Urdu sentences without urduhack 1.0.2/1.0.3 importable (`pip install urduhack` gives 1.1.1, which can't be
+  imported with numpy 2), and Urdu docs whose sentences datatrove can't locate in the text (it raises there).
 - `FTFYFormatter` with ligature, width, quote or line-break fixing or a normalization turned on (Rust then only skips
   ftfy where it provably changes nothing), or ftfy other than 6.3.1.
 - Any step whose dependency is at an unverified version (see below), a subclass that overrides a reproduced
@@ -133,6 +134,7 @@ mismatch the affected step or language runs datatrove's code:
 | SudachiPy | 0.7.0 with SudachiDict-core installed |
 | pyvi, pythainlp, indic-nlp-library | 0.1.1, 5.4.0, 0.92, or not installed |
 | python-crfsuite | 0.9.12 with pythainlp 5.4.0, for Thai sentences (otherwise only they run datatrove's code) |
+| urduhack | 1.0.2 or 1.0.3, importable (it needs TensorFlow), for Urdu sentences (otherwise only they run datatrove's code) |
 | trafilatura, lxml | a pair trafilatura-rs reproduces |
 | tldextract | 5.4.x (otherwise only the host split goes through tldextract) |
 | ftfy | 6.3.1 for the `fix_text` port; other 6.x only skips ftfy on unchanged docs; otherwise ftfy always runs |

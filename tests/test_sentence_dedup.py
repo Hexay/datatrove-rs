@@ -18,7 +18,7 @@ from datatrove.pipeline.dedup import sentence_dedup as dts
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import cjk_fuzz  # noqa: E402
 import wordtok_fuzz  # noqa: E402
-from datatrove_rs import cjk  # noqa: E402
+from datatrove_rs import _wordtok, cjk  # noqa: E402
 from datatrove_rs import sentence_dedup as sd  # noqa: E402
 from datatrove_rs.sentence_dedup import SentenceDedupFilter, SentenceDedupSignature  # noqa: E402
 from fuzz import fuzz_docs  # noqa: E402
@@ -58,11 +58,14 @@ def _lang_docs(name):
         seed = fuzz_docs(80, seed=9)
     else:
         pytest.importorskip({"vi": "pyvi", "thai": "pythainlp"}.get(name, "indicnlp"))
+        if name == "indic:ur" and not _wordtok.load_urdu_sentences():
+            pytest.skip("Urdu sentences need urduhack's splitter")
         seed = wordtok_fuzz.fuzz_docs([], 80, 0, name)
     return seed + dup_docs(seed, 120, seed=4)
 
 
-LANGUAGES = {"de": "deu_Latn", "zh": "cmn_Hani", "ja": "jpn_Jpan", "vi": "vie_Latn", "indic:hi": "hin_Deva"}
+LANGUAGES = {"de": "deu_Latn", "zh": "cmn_Hani", "ja": "jpn_Jpan", "vi": "vie_Latn", "indic:hi": "hin_Deva",
+             "indic:ur": "urd_Arab"}
 
 
 @pytest.mark.parametrize("name", list(LANGUAGES) + ["thai"])
@@ -77,7 +80,8 @@ def test_fallbacks():
     with tempfile.TemporaryDirectory() as tmp:
         lines = dts.SentDedupConfig(split_sentences=False)
         for cls in (SentenceDedupSignature, SentenceDedupFilter):
-            assert cls(tmp, config=dts.SentDedupConfig(), language="urd_Arab").rust() is None
+            urdu = cls(tmp, config=dts.SentDedupConfig(), language="urd_Arab").rust()
+            assert (urdu is None) != _wordtok.load_urdu_sentences()
             assert cls(tmp, config=lines, language="urd_Arab").rust() is not None
             if all(importlib.util.find_spec(m) for m in ("pythainlp", "pycrfsuite")):
                 assert cls(tmp, config=dts.SentDedupConfig(), language="tha_Thai").rust() is not None

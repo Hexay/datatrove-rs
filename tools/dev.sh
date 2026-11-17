@@ -18,7 +18,7 @@ build() {
   local profile=${PROFILE:-iter}
   # iter's `incremental = true` covers workspace crates only, deps stay sccache-cached; sccache rejects the env var
   [ "$profile" = iter ] && unset CARGO_INCREMENTAL
-  (cd "$ROOT" && "$PY" -m maturin develop --profile "$profile" -q "$@")
+  (cd "$ROOT" && in_heavy_lock "$PY" -m maturin develop --profile "$profile" -q "$@")
 }
 . "$ROOT/tools/slot.sh"
 case $cmd in

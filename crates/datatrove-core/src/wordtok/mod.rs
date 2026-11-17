@@ -6,11 +6,13 @@ mod crfsuite;
 mod indic;
 mod indic_sents;
 mod thai;
+mod urdu_sents;
 mod vi;
 
 use crate::pystr::char_len;
 use std::sync::OnceLock;
 pub use thai::load_crfcut as load_thai_crfcut;
+pub use urdu_sents::load_urdu_eos;
 
 /// Where `Splitter::split`'s spans point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

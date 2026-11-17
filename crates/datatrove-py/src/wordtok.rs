@@ -33,9 +33,16 @@ fn load_thai_crfcut(model_path: &str, enders: Vec<String>, starters: Vec<String>
     datatrove_core::wordtok::load_thai_crfcut(model_path, enders, starters).map_err(PyValueError::new_err)
 }
 
+/// Gives the Urdu port urduhack's `eos._URDU_CONJUNCTIONS` and `eos._URDU_NEWLINE_WORDS`.
+#[pyfunction]
+fn load_urdu_eos(conjunctions: Vec<String>, newline_words: Vec<String>) {
+    datatrove_core::wordtok::load_urdu_eos(conjunctions, newline_words)
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(word_tokenizers, m)?)?;
     m.add_function(wrap_pyfunction!(sentence_count, m)?)?;
     m.add_function(wrap_pyfunction!(sent_tokenize, m)?)?;
-    m.add_function(wrap_pyfunction!(load_thai_crfcut, m)?)
+    m.add_function(wrap_pyfunction!(load_thai_crfcut, m)?)?;
+    m.add_function(wrap_pyfunction!(load_urdu_eos, m)?)
 }

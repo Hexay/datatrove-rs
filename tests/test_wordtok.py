@@ -13,20 +13,21 @@ import pytest
 from datatrove.data import Document
 from datatrove.pipeline import filters as dt
 from datatrove.pipeline import stats as dts
-from datatrove.utils.text import split_into_sentences
 from datatrove.utils.word_tokenizers import load_tokenizer_assignments, load_word_tokenizer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import datatrove_rs as rs  # noqa: E402
-from datatrove_rs import _base, _core  # noqa: E402
+from datatrove_rs import _base, _core, _wordtok  # noqa: E402
 from datatrove_rs import stats as rs_stats_mod  # noqa: E402
 from ngram_parity import check_language  # noqa: E402
 from parity import check_filter, check_minhash  # noqa: E402
 from wordtok_fuzz import fuzz_docs  # noqa: E402
-from wordtok_parity import check_sentences  # noqa: E402
+from wordtok_parity import SENTENCE_PORTS, check_sentences, py_split  # noqa: E402
 
 LIBS = {"vi": "pyvi", "thai": "pythainlp"}
 NAMES = sorted(_core.word_tokenizers())
+# Ports with their own sentence splitter (the others use spaCy's sentencizer or indic-nlp-library's rules).
+SENT_TOKENIZE_PORTS = ("thai", "indic:ur")
 
 
 def language_key(name):
@@ -48,21 +49,37 @@ def setup(name, n, seed=0):
     return key, [d for d in fuzz_docs([], n, seed, name) if "IS_ALPHA" not in d]
 
 
+def sentences_ported(name):
+    """False for Urdu without a verified, importable urduhack: its sentences are then datatrove's."""
+    return name != "indic:ur" or _wordtok.load_urdu_sentences()
+
+
+def outcome(f, *args):
+    try:
+        return f(*args)
+    except Exception as e:  # noqa: BLE001 - Rust must fall back to datatrove's code, which raises the same
+        return type(e).__name__
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_words_and_sentences(name):
     key, docs = setup(name, 80)
     tok = load_word_tokenizer(key)
     bad = [d for d in docs if tok.word_tokenize(d) != _core.split_into_words(d, name)]
     assert not bad, bad[0][:500]
-    if name == "thai":
-        docs = docs[:15]  # pythainlp's crfcut is slow
-        bad = [d for d in docs if tok.sent_tokenize(d) != _core.sent_tokenize(d, name)]
+    if not sentences_ported(name):
+        return
+    if name in SENT_TOKENIZE_PORTS:
+        sample = docs[:15] if name == "thai" else docs  # pythainlp's crfcut is slow
+        want = {d: outcome(tok.sent_tokenize, d) for d in sample}
+        bad = [d for d in sample if _core.sent_tokenize(d, name) != (None if isinstance(want[d], str) else want[d])]
         assert not bad, bad[0][:500]
     lines = [line.strip() for d in docs for line in d.splitlines()]
     bad = [line for line in lines if not check_sentences(line, key, name)]
     assert not bad, bad[0][:500]
-    if name in ("vi", "thai"):
-        bad = [d for d in docs if split_into_sentences(d, key) != _core.split_into_sentences(d, name)]
+    if name in SENTENCE_PORTS:
+        want = {d: py_split(d, key) for d in docs}
+        bad = [d for d in docs if _core.split_into_sentences(d, name) != (None if isinstance(want[d], str) else want[d])]
         assert not bad, bad[0][:500]
 
 
@@ -76,17 +93,19 @@ def test_steps(name, tmp_path):
         ("FineWebQuality", dt.FineWebQualityFilter, rs.FineWebQualityFilter, {}),
         ("C4Quality", dt.C4QualityFilter, rs.C4QualityFilter, {"filter_no_terminal_punct": False}),
     ]
-    if name in ("vi", "thai"):
+    if name in SENTENCE_PORTS and sentences_ported(name):
         cases.append(("C4Quality[sentences]", dt.C4QualityFilter, rs.C4QualityFilter, {"split_paragraph": False}))
-    if name == "thai":
+    if name in SENT_TOKENIZE_PORTS and sentences_ported(name):
         cases.append(("C4Quality[min 5]", dt.C4QualityFilter, rs.C4QualityFilter, {"min_num_sentences": 5}))
         f = rs.C4QualityFilter(language=key, split_paragraph=False)
-        assert f.rust() is not None and f.rust().filter(docs[0]) is not None
+        # Fuzzed Urdu docs nearly always make `simple_span_tokenize` raise (urduhack rejoins words with one space)
+        clean = "ยา ดี. ไป ไหน" if name == "thai" else "یہ ایک کتاب ہے۔ وہ دو گھر ہیں۔"
+        assert f.rust() is not None and f.rust().filter(clean) is not None
         py_stats, rs_stats = (m.SentenceStats(str(tmp_path), language=key) for m in (dts, rs_stats_mod))
         assert rs_stats.rust()(docs[0]) is not None
-        for d in docs[:10]:
+        for d in docs[:10] if name == "thai" else docs:
             doc = Document(text=d, id="0")
-            assert py_stats.extract_stats(doc) == rs_stats.extract_stats(doc), d[:300]
+            assert outcome(py_stats.extract_stats, doc) == outcome(rs_stats.extract_stats, doc), d[:300]
     for case, py_cls, rs_cls, kwargs in cases:
         bad = check_filter(case, py_cls, rs_cls, {"language": key} | kwargs, docs, report)
         assert bad == (0, True), report.getvalue()[:3000]
@@ -96,27 +115,44 @@ def test_steps(name, tmp_path):
 
 def test_c4_falls_back_where_rust_cannot_decide():
     pytest.importorskip("indicnlp")
-    # Urdu sentences come from urduhack: C4 hands any doc with a kept line to datatrove.
+    # Without urduhack's splitter, C4 hands any Urdu doc with a kept line to datatrove.
     f = rs.C4QualityFilter(language="urd_Arab", min_words_per_line=1, filter_no_terminal_punct=False)
-    assert f.rust() is not None and f.rust().filter("ایک دو تین") is None
-    # `split_paragraph=False` runs datatrove's code for Indic.
+    assert f.rust() is not None and (f.rust().filter("ایک دو تین") is None) != _wordtok.load_urdu_sentences()
+    # `split_paragraph=False` runs datatrove's code for Indic other than Urdu.
     assert rs.C4QualityFilter(language="hin_Deva", split_paragraph=False).rust() is None
 
 
-def test_thai_sentences_need_verified_crfsuite():
-    """Another python-crfsuite (or pythainlp) leaves Thai sentences to datatrove; words stay in Rust. The model is
-    loaded once per process, so this runs in a fresh one."""
-    pytest.importorskip("pycrfsuite")
-    code = (
+def _in_fresh_process(dist, version, code):
+    """Runs `code` with `importlib.metadata.version(dist)` faked; the sentence data loads once per process."""
+    prelude = (
         "import importlib.metadata as m, sys\n"
         "real = m.version\n"
-        "m.version = lambda d: '0.9.7' if d == 'python-crfsuite' else real(d)\n"
+        f"m.version = lambda d: {version!r} if d == {dist!r} else real(d)\n"
         "from datatrove_rs import C4QualityFilter, _base, _core, _wordtok\n"
         "from datatrove_rs.stats import SentenceStats\n"
+    )
+    subprocess.run([sys.executable, "-c", prelude + code], check=True)
+
+
+def test_thai_sentences_need_verified_crfsuite():
+    """Another python-crfsuite (or pythainlp) leaves Thai sentences to datatrove; words stay in Rust."""
+    pytest.importorskip("pycrfsuite")
+    _in_fresh_process("python-crfsuite", "0.9.7", (
         "assert _base.rust_language('tha_Thai') == 'thai' and not _wordtok.load_thai_sentences()\n"
         "assert _core.sent_tokenize('ก ข. ค', 'thai') is None\n"
         "assert SentenceStats('/tmp', language='tha_Thai').rust()('ก ข. ค') is None\n"
         "assert C4QualityFilter(language='tha_Thai', split_paragraph=False).rust() is None\n"
         "assert _core.split_into_words('ก ข', 'thai') == ['ก', 'ข']\n"
-    )
-    subprocess.run([sys.executable, "-c", code], check=True)
+    ))
+
+
+def test_urdu_sentences_need_verified_urduhack():
+    """urduhack 1.1.x (not importable with numpy 2) leaves Urdu sentences to datatrove; words stay in Rust."""
+    pytest.importorskip("indicnlp")
+    _in_fresh_process("urduhack", "1.1.1", (
+        "assert _base.rust_language('urd_Arab') == 'indic:ur' and not _wordtok.load_urdu_sentences()\n"
+        "assert _core.sent_tokenize('یہ ایک ہے۔ اور دو', 'indic:ur') is None\n"
+        "assert SentenceStats('/tmp', language='urd_Arab').rust()('یہ ایک ہے۔') is None\n"
+        "assert C4QualityFilter(language='urd_Arab', split_paragraph=False).rust() is None\n"
+        "assert _core.split_into_words('یہ ایک', 'indic:ur') == ['یہ', 'ایک']\n"
+    ))

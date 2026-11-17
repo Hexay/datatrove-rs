@@ -5,8 +5,8 @@ Usage: wordtok_parity.py <datatrove_language> <docs.bin> [--n N] [--fuzz N] [--s
 Real docs come from `docs.bin` ('\\0'-joined, `tools/fetch_fineweb2.py`); fuzzed docs splice the corpus with
 script-specific and adversarial pieces (`wordtok_fuzz.py`). Sentence counts are checked on every line of every
 doc against `len(split_into_sentences(line))`; Rust must answer "unknown" exactly where datatrove raises, and
-"at_least_one" only where datatrove returns >= 1 without raising. Vietnamese and Thai also compare whole-doc
-`split_into_sentences`, and Thai `sent_tokenize`. Prints a summary; exits 1 on any mismatch.
+"at_least_one" only where datatrove returns >= 1 without raising. Vietnamese, Thai and Urdu also compare whole-doc
+`split_into_sentences`, and Thai and Urdu `sent_tokenize` (Urdu needs urduhack importable). Prints a summary; exits 1 on any mismatch.
 """
 
 import argparse
@@ -17,18 +17,27 @@ from datatrove.utils.text import split_into_sentences
 from datatrove.utils.word_tokenizers import load_word_tokenizer
 from wordtok_fuzz import fuzz_docs
 
-from datatrove_rs import _core
+from datatrove_rs import _core, _wordtok
 from datatrove_rs._base import rust_language
+
+# Ports compared on whole-doc `split_into_sentences` (None from Rust exactly where datatrove raises).
+SENTENCE_PORTS = ("vi", "thai", "indic:ur")
+
+
+def py_split(text, lang):
+    try:
+        return split_into_sentences(text, lang)
+    except Exception as e:  # noqa: BLE001 - any raise must map to "unknown"/None
+        return type(e).__name__
 
 
 def check_sentences(line, lang, name):
-    try:
-        want = len(split_into_sentences(line, lang))
-    except Exception as e:  # noqa: BLE001 - any raise must map to "unknown"
-        want = type(e).__name__
+    want = py_split(line, lang)
+    want = want if isinstance(want, str) else len(want)
     got = _core.sentence_count(line, name)
     if got == "unknown":
-        return True  # C4 then runs datatrove for the whole doc
+        # C4 then runs datatrove for the whole doc; the Urdu port must say so exactly where urduhack's output raises
+        return name != "indic:ur" or isinstance(want, str)
     if got == "at_least_one":
         return isinstance(want, int) and want >= 1
     return got == want
@@ -46,6 +55,8 @@ def main():
     name = rust_language(args.language)
     if name is None:
         sys.exit(f"no Rust tokenizer for {args.language!r}")
+    if name == "indic:ur" and not args.no_sentences and not _wordtok.load_urdu_sentences():
+        sys.exit("Urdu sentences need urduhack at a VERIFIED_URDUHACK version, importable (with TensorFlow)")
     # "IS_ALPHA" docs always run datatrove's code (spaCy state, see `RustBacked.rust_for`)
     docs = [d for d in open(args.docs, "rb").read().decode("utf-8").split("\0") if d and "IS_ALPHA" not in d]
     docs = docs[: args.n]
@@ -72,20 +83,26 @@ def main():
                     print(f"    text: {text[:200]!r}")
             if args.no_sentences:
                 continue
-            if name in ("vi", "thai") and _core.split_into_sentences(text, name) != split_into_sentences(
-                text, args.language
-            ):
-                bad_sent += 1
-                print(f"  sentence split diff: {text[:200]!r}")
-            if name == "thai":
+            if name in SENTENCE_PORTS:
+                want_split = py_split(text, args.language)
+                if _core.split_into_sentences(text, name) != (None if isinstance(want_split, str) else want_split):
+                    bad_sent += 1
+                    print(f"  sentence split diff: {text[:200]!r}")
+            if name in ("thai", "indic:ur"):
                 t0 = time.perf_counter()
-                want_s = tok.sent_tokenize(text)
+                try:
+                    want_s = tok.sent_tokenize(text)
+                except ValueError:  # urduhack past U+10FFFF
+                    want_s = None
                 t1 = time.perf_counter()
                 got_s = _core.sent_tokenize(text, name)
                 ts_rs += time.perf_counter() - t1
                 ts_py += t1 - t0
-                n_sents += len(want_s)
-                if got_s != want_s:
+                n_sents += len(want_s or ())
+                if got_s != want_s and None in (got_s, want_s):
+                    bad_sent += 1
+                    print(f"  sent_tokenize raise diff: rust {got_s is None} py {want_s is None}: {text[:200]!r}")
+                elif got_s != want_s:
                     bad_sent += 1
                     if bad_sent <= 3:
                         diff = next(i for i, (a, b) in enumerate(zip(got_s + [None], want_s + [None])) if a != b)

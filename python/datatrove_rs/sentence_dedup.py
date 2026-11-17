@@ -15,7 +15,7 @@ from datatrove.utils.logging import logger
 from datatrove.utils.typeshelper import ExtensionHelperSD, StatHints
 from tqdm import tqdm
 
-from datatrove_rs import _core
+from datatrove_rs import _core, _wordtok
 from datatrove_rs._base import _NOT_APPLICABLE, FALLBACK, RustBacked, norm_fields
 # Fingerprint of the datatrove code these classes reproduce (`_reproduced`): datatrove 0.10.1 up to main of 2026-11.
 VERIFIED_SOURCE = "278a91e614dc465eaada99c8ece9b73a"
@@ -52,6 +52,8 @@ class SentenceDedupSignature(RustBacked, dt.SentenceDedupSignature):
         if not datatrove_verified() or not _plain_int(c.n_sentences, 0):
             return _NOT_APPLICABLE
         norm = norm_fields(c.norm_config)
+        if c.split_sentences:
+            _wordtok.load_sentences(language)
         rs = _core.SentDedupSigner(c.n_sentences, bool(c.split_sentences), norm, h.hash_fc, h.precision, language)
         return rs if rs.supported else _NOT_APPLICABLE
 
@@ -123,6 +125,7 @@ class SentenceDedupFilter(RustBacked, dt.SentenceDedupFilter):
         if type(c.min_words_to_remove_span) not in (int, float):
             return _NOT_APPLICABLE
         split = bool(c.split_sentences)
+        _wordtok.load_sentences(language)
         rs = _core.SentDedupFilter(c.n_sentences, split, float(c.min_words_to_remove_span), language)
         return rs if rs.supported else _NOT_APPLICABLE
 

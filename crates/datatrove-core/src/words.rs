@@ -146,8 +146,8 @@ impl Words {
         Some(out)
     }
 
-    /// True unless the tokenizer is a `wordtok` port whose sentences aren't available (Urdu; Thai until
-    /// `load_thai_crfcut`).
+    /// True unless the tokenizer is a `wordtok` port whose sentences aren't loaded (`load_thai_crfcut`,
+    /// `load_urdu_eos`).
     pub fn has_sentences(&self) -> bool {
         self.engine.final_words().is_none_or(|s| s.has_sentences())
     }

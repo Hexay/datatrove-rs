@@ -21,6 +21,8 @@ VERIFIED = {
 }
 # pythainlp's crfcut sentence splitter tags with python-crfsuite; the Thai port reproduces these releases' tagger.
 VERIFIED_CRFSUITE = ("python-crfsuite", frozenset({"0.9.12"}))
+# indic-nlp-library's "ur" sentence_split is urduhack's sentence_tokenizer; see docs/parity.md.
+VERIFIED_URDUHACK = ("urduhack", frozenset({"1.0.2", "1.0.3"}))
 _CLASSES = {"ThaiTokenizer": ThaiTokenizer, "IndicNLPTokenizer": IndicNLPTokenizer}
 
 
@@ -55,6 +57,27 @@ def load_thai_sentences() -> bool:
     return True
 
 
+@lru_cache(maxsize=1)
+def load_urdu_sentences() -> bool:
+    """Gives the Urdu port urduhack's word lists; True when urduhack is at a verified version and imports (it needs
+    TensorFlow), otherwise Urdu sentences stay datatrove's. Only sentence steps call it, to spare the import."""
+    dist, versions = VERIFIED_URDUHACK
+    if _version(dist) not in versions:
+        return False
+    try:
+        from urduhack.tokenization import eos, sentence_tokenizer  # noqa: F401  (datatrove's import)
+    except Exception:
+        return False
+    _core.load_urdu_eos(list(eos._URDU_CONJUNCTIONS), list(eos._URDU_NEWLINE_WORDS))
+    return True
+
+
+def load_sentences(name: str | None) -> None:
+    """Loads the library data a port's sentence splitter reads at run time, before a sentence step builds."""
+    if name == "indic:ur":
+        load_urdu_sentences()
+
+
 def _name(cls_name: str, arg: str | None) -> str | None:
     if cls_name == "ThaiTokenizer":
         return "thai"
@@ -86,11 +109,11 @@ def rust_name_of(tok) -> str | None:
 
 @lru_cache(maxsize=None)
 def c4_supported(name: str, split_paragraph: bool) -> bool:
-    """Rust C4 with `split_paragraph=False` needs whole-text sentence spans: "vi" (a spaCy Doc) and Thai with the
-    crfcut port loaded. Without it, Thai sentence counts are left to datatrove (only needed when a doc keeps few
-    lines); Rust skips them when every kept line counts at least one, which requires datatrove's Thai splitter
+    """Rust C4 with `split_paragraph=False` needs whole-text sentence spans: "vi" (a spaCy Doc), and Thai and Urdu
+    with their splitters loaded. Without it, Thai sentence counts are left to datatrove (only needed when a doc keeps
+    few lines); Rust skips them when every kept line counts at least one, which requires datatrove's Thai splitter
     (pythainlp's crfcut) to be importable."""
-    if name == "vi" or (name == "thai" and load_thai_sentences()):
+    if name == "vi" or (name == "thai" and load_thai_sentences()) or (name == "indic:ur" and load_urdu_sentences()):
         return True
     if not split_paragraph:
         return False

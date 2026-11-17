@@ -2,7 +2,7 @@
 //! `pat_num_seq` number re-joining with its quirk of skipping a match at position 0).
 
 use super::indic_sents::{sentence_count, sentences};
-use super::{SentenceCount, Splitter, Src};
+use super::{sentence_count_of, urdu_sents, SentenceCount, Splitter, Src};
 use crate::pystr::strip;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -102,18 +102,21 @@ impl Splitter for Indic {
 
     fn sentence_count(&self, text: &str) -> SentenceCount {
         if self.urdu() {
-            // indic-nlp-library hands Urdu to urduhack
-            return SentenceCount::Unknown;
+            return self.sentences(text).map_or(SentenceCount::Unknown, |s| sentence_count_of(text, &s));
         }
         sentence_count(text, self.lang)
     }
 
     fn has_sentences(&self) -> bool {
-        !self.urdu()
+        !self.urdu() || urdu_sents::loaded()
     }
 
+    /// indic-nlp-library hands Urdu to urduhack.
     fn sentences(&self, text: &str) -> Option<Vec<String>> {
-        self.has_sentences().then(|| sentences(text, self.lang))
+        if self.urdu() {
+            return urdu_sents::sentences(text);
+        }
+        Some(sentences(text, self.lang))
     }
 }
 

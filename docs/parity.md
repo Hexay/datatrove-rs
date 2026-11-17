@@ -89,8 +89,18 @@ Every check compares against datatrove running unmodified in the same environmen
   interval bound and 20,000 random addresses across five configs, comparing text and the round-robin counters.
 - `tests/test_badwords.py` compares `C4BadWordsFilter` verdicts and stats with the real en/de/ru/ja/zh lists on
   words flanked by ASCII, Unicode word chars, combining marks and edges.
-- `tests/test_ftfy.py` checks that each translated ftfy regex matches exactly the lines Python's does (6,000
-  mojibake/entity/control-char strings) and that `FTFYFormatter` output equals datatrove's in three configs.
+- `tools/ftfy_parity.py` compares `FTFYFormatter.format()` output and `run()` (texts, stats) with datatrove's in 10
+  configs: the default, `unescape_html` on/off, each `fix_encoding` sub-flag off, `fix_encoding` off,
+  `explain=False`, `max_decode_length=37`, and two the port leaves to Python (ligatures/width/quotes, NFC). Docs:
+  real ones, copies garbled by `tools/ftfy_fuzz.py` (whole docs, lines or spans as UTF-8 decoded in each encoding
+  ftfy tries and a few it doesn't, doubled, CESU-8, Java nulls, A0 turned into spaces, bytes lost to `?`/`�`) and
+  synthetic docs (entities named, uppercased, numeric and invalid, `<` for `"auto"`, C1 and other control chars,
+  ANSI escapes, ligatures, widths, quotes, line breaks, lone surrogates). 0 mismatches on 12,000 English FineWeb
+  docs (42 of which ftfy changes) and 3,000 garbled copies in all 10 configs; 78,000 FineWeb-2 docs (1,000 from
+  each of 78 subsets; already ftfy-cleaned, none changed) in the default config and 19,500 garbled copies (12,528
+  changed) in the default and `unescape_html=True` configs;
+  2,000 fuzzed Chinese/Japanese docs; 3,020 synthetic docs in all 10 configs. `tests/test_ftfy.py` repeats a small
+  version and checks that each translated regex matches exactly the lines Python's does.
 - On real text (12,000 FineWeb docs, 12,000 FineWeb-2 docs in 8 languages, each plus 1,000 PII-dense copies),
   `PIIFormatter`, `FTFYFormatter` and `C4BadWordsFilter` give 0 mismatches.
 - `tests/test_url_lang.py` compares `URLFilter` (decisions, reasons, stats; the Rust host split against tldextract
@@ -198,9 +208,19 @@ Every check compares against datatrove running unmodified in the same environmen
   re-escaping it rebuilds the identical pattern. A search succeeds iff some occurrence is flanked by a Python
   non-`\w` char or the text edge (an empty word, from a blank line in the list, is handled too). Lists, sampling
   and stats stay datatrove's.
-- **FTFYFormatter.** Never changes text itself: it returns the input when ftfy provably would, and calls ftfy
-  otherwise. The proof per fixer is in `python/datatrove_rs/ftfy_check.py`; ftfy's regexes are translated from
-  Python's parse tree. Configs with `fix_line_breaks` or `normalization`, or ftfy other than 6.x, always call ftfy.
+- **FTFYFormatter.** `crates/datatrove-core/src/ftfy` ports `ftfy.fix_text` for the fixers datatrove enables by
+  default: segments, the `"auto"` HTML switch that stays off once a segment has `<`, `unescape_html` (with
+  `html.unescape`'s numeric rules and ftfy's "keep it if a `;` is left" check), the whole `fix_encoding` search
+  (the 10 charmaps, `restore_byte_a0`, `replace_lossy_sequences`, the `utf-8-variants` decoder including its `$`
+  matching before a trailing `\n`, `decode_inconsistent_utf8` with its lookbehind and nested default-config
+  `fix_encoding`, Latin-1 to Windows-1252, C1 controls), terminal escapes and control chars, repeated until a round
+  changes nothing. `fix_surrogates` is a no-op on text that reaches Rust. Regexes, charmaps and HTML tables are
+  exported from ftfy and Python by `tools/export_ftfy.py` (`^` becomes `\A`, the lookbehind is split off; patterns
+  ported by hand are asserted unchanged). It runs only with ftfy 6.3.1 (`VERIFIED_FTFY`) and the Unicode version
+  the tables came from; docs with lone surrogates go to ftfy. Configs that enable ligatures, width, quotes, line
+  breaks or a normalization use the older check instead: return the input when ftfy provably leaves it unchanged
+  (`python/datatrove_rs/ftfy_check.py`), else call ftfy; with `fix_line_breaks` or `normalization`, or ftfy other
+  than 6.x, ftfy always runs.
 - **Stats steps.** `extract_stats` runs in Rust on the step's tokenizer (as the filters pick it) with Python's
   `isupper`/`istitle`/`isdigit` tables; SentenceStats uses the sentencizer spans (per 40,000-byte chunk for Japanese)
   or the Indic `sentence_split` port, and Thai and Urdu sentences run datatrove's code. `run()` keeps datatrove's loop

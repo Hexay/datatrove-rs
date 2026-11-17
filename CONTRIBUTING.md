@@ -46,6 +46,8 @@ tools/cjk_fuzz.py <out.bin> <n> <zh|ja>                        # adversarial Chi
 tools/wordtok_parity.sh <fineweb2 dir> [n] [fuzz] [set:Tokenizer]... # vi/Thai/Indic ports vs datatrove's tokenizers
 tools/stats_parity.py <parquet> [--language KEY]      # stats steps: files, merged files, metadata, stats
 tools/sentdedup_lang_parity.sh <fineweb2 dir> [n] [key:file]...     # sentence dedup stages 1-3 per language
+tools/ftfy_parity.py [--n N] [--fuzz N] [--all-configs] <corpus>...  # FTFYFormatter on real, garbled, fuzzed docs
+tools/ftfy_bench.py [--n N] [--mojibake] <parquet>...  # FTFYFormatter: datatrove vs check-only vs fix_text port
 ```
 
 `tools/dev.sh parity` caches the datatrove side in `$DATATROVE_RS_PARITY_CACHE` (default
@@ -63,7 +65,8 @@ After upgrading spaCy, re-export the rules with `crates/spacy-tokenizer/tools/ex
 the `sudachi` tag in `crates/cjk-tokenizer/Cargo.toml`, `SUDACHI_VERSION` and the test pin, then rerun
 `cjk-tokenizer/tools/parity.sh ja`. To follow pythainlp, indic-nlp-library or pyvi, re-export with
 `tools/export_wordtok.py` / `tools/export_vi.py`, rerun `tools/wordtok_parity.sh`, then add the version to
-`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. For a new datatrove release, rerun
+`VERIFIED` in `python/datatrove_rs/_wordtok.py` and bump the test pin. For a new ftfy release, re-export with `tools/export_ftfy.py`, rerun `tools/ftfy_parity.py` and bump
+`VERIFIED_FTFY` in `python/datatrove_rs/ftfy_check.py`. For a new datatrove release, rerun
 `tools/stats_parity.py` and add it to `VERIFIED_DATATROVE` in `python/datatrove_rs/_stats_run.py`. `PROFILE_LANG=thai|vi|indic:<code>` profiles a
 port with the `profile` binary.
 

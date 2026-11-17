@@ -6,6 +6,7 @@ pub mod cjk_words;
 pub mod cluster;
 pub mod decont;
 pub mod filters;
+pub mod ftfy;
 pub mod ftfy_check;
 pub mod minhash;
 pub mod ngrams;

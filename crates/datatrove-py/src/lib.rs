@@ -282,8 +282,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<url::PyUrlLists>()?;
     m.add_class::<pii::PyPii>()?;
     m.add_class::<badwords::PyBadWords>()?;
-    m.add_class::<ftfy_check::PyFtfyCheck>()?;
-    m.add_function(wrap_pyfunction!(ftfy_check::re_category_ranges, m)?)?;
+    ftfy_check::register(m)?;
     m.add_function(wrap_pyfunction!(unicode_tables_version, m)?)?;
     m.add_function(wrap_pyfunction!(simplify_text, m)?)?;
     m.add_function(wrap_pyfunction!(split_into_words, m)?)?;
